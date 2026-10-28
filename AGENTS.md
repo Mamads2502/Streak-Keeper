@@ -10,7 +10,8 @@
 - Nouvelle fonctionnalité importante : vérifier l’état Git, créer et sélectionner `feature/<nom-descriptif>`. Garder les corrections associées sur cette branche.
 - Travailler dans le dossier actuel, sans worktree.
 - Attendre les tests de l’utilisateur sur Waydroid avant de proposer une fusion dans `main`.
-- Aucun commit, merge, push ou suppression de branche sans accord explicite. L’utilisateur gère normalement commit et push.
+- Aucun commit, merge ou push sans accord explicite. L’utilisateur gère normalement commit et push.
+- Une fonctionnalité terminée et intégrée à `main` : vérifier que sa branche locale est entièrement fusionnée, puis la supprimer avec `git branch -d`, sans redemander confirmation. Toute autre suppression de branche nécessite un accord explicite.
 
 ## Validation et livraison
 
