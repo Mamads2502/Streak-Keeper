@@ -3,9 +3,13 @@ package fr.streakpresets.app;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.graphics.Color;
+import android.content.res.ColorStateList;
+import android.graphics.drawable.GradientDrawable;
+import android.graphics.drawable.RippleDrawable;
+import android.text.TextUtils;
+import android.view.Gravity;
 import android.os.Bundle;
 import android.view.View;
-import android.view.ViewGroup;
 import android.webkit.CookieManager;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceError;
@@ -17,11 +21,12 @@ import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.FrameLayout;
-import android.widget.HorizontalScrollView;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
+
+import androidx.drawerlayout.widget.DrawerLayout;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -45,6 +50,11 @@ public class MainActivity extends Activity {
     private Profile pendingProfile;
     private Friend pendingFriend;
     private ScrollView home;
+    private LinearLayout homePanel;
+    private DrawerLayout drawerLayout;
+    private LinearLayout drawerPanel;
+    private LinearLayout drawerProfiles;
+    private Button menuButton;
     private WebView browser;
     private TextView browserStatus;
 
@@ -113,7 +123,11 @@ public class MainActivity extends Activity {
 
         FrameLayout root = new FrameLayout(this);
         root.setBackgroundColor(Color.WHITE);
-        setContentView(root);
+        drawerLayout = new DrawerLayout(this);
+        drawerLayout.setScrimColor(0x660F172A);
+        drawerLayout.setDrawerElevation(dp(12));
+        drawerLayout.addView(root, new DrawerLayout.LayoutParams(-1, -1));
+        setContentView(drawerLayout);
 
         LinearLayout browserPanel = vertical();
         browserPanel.setBackgroundColor(Color.WHITE);
@@ -158,11 +172,31 @@ public class MainActivity extends Activity {
         });
         browserPanel.addView(browser, new LinearLayout.LayoutParams(-1, 0, 1));
 
+        homePanel = vertical();
+        homePanel.setBackgroundColor(Color.rgb(250, 250, 250));
+        root.addView(homePanel, new FrameLayout.LayoutParams(-1, -1));
+        LinearLayout toolbar = horizontal();
+        toolbar.setPadding(dp(8), dp(8), dp(16), dp(8));
+        toolbar.setBackgroundColor(Color.WHITE);
+        menuButton = button("☰", () -> drawerLayout.openDrawer(drawerPanel));
+        menuButton.setTextSize(24);
+        menuButton.setContentDescription("Ouvrir le menu des profils");
+        styleDrawerButton(menuButton, false);
+        menuButton.setPadding(0, 0, 0, 0);
+        toolbar.addView(menuButton, new LinearLayout.LayoutParams(dp(48), dp(48)));
+        TextView title = text("🔥 Streak keeper", 22, true);
+        toolbar.addView(title, new LinearLayout.LayoutParams(0, -2, 1));
+        homePanel.addView(toolbar);
+
         home = new ScrollView(this);
         home.setFillViewport(true);
         home.setBackgroundColor(Color.rgb(250, 250, 250));
-        root.addView(home, new FrameLayout.LayoutParams(-1, -1));
+        homePanel.addView(home, new LinearLayout.LayoutParams(-1, 0, 1));
+        createProfileDrawer();
         renderHome();
+        if (state != null && state.getBoolean("profileDrawerOpen")) {
+            drawerLayout.post(() -> drawerLayout.openDrawer(drawerPanel, false));
+        }
         browser.loadUrl(FORM_URL); // Load beneath the presets, but never send a request.
     }
 
@@ -170,34 +204,17 @@ public class MainActivity extends Activity {
         pendingProfile = null;
         pendingFriend = null;
         renderHome();
-        home.setVisibility(View.VISIBLE);
+        homePanel.setVisibility(View.VISIBLE);
+        drawerLayout.setDrawerLockMode(DrawerLayout.LOCK_MODE_UNLOCKED);
     }
 
     private void renderHome() {
         LinearLayout page = vertical();
         page.setPadding(dp(16), dp(20), dp(16), dp(28));
-        page.addView(text("🔥 Streak keeper", 25, true));
-        page.addView(text("Tes profils et amis, sauvegardés sur ce téléphone.", 13, false));
-        gap(page, 18);
-
-        page.addView(text("Profils Snapchat", 19, true));
-        HorizontalScrollView strip = new HorizontalScrollView(this);
-        LinearLayout profileButtons = horizontal();
-        for (Profile p : profiles) {
-            Button choice = button((p == active ? "✓ " : "") + p.name, () -> {
-                active = p;
-                persist();
-                renderHome();
-            });
-            profileButtons.addView(choice);
-        }
-        strip.addView(profileButtons);
-        page.addView(strip);
-        page.addView(button("+ Ajouter un profil", () -> editProfile(null)));
-
+        renderDrawerProfiles();
         if (active == null) {
             gap(page, 25);
-            page.addView(text("Commence en enregistrant un profil Snapchat.", 16, false));
+            page.addView(text("Ouvre le menu ☰ pour ajouter ton premier profil Snapchat.", 16, false));
             home.removeAllViews();
             home.addView(page);
             return;
@@ -242,6 +259,98 @@ public class MainActivity extends Activity {
         page.addView(text("Projet personnel non affilié à Snapchat. Aucun mot de passe n’est demandé et aucune demande n’est envoyée automatiquement.", 12, false));
         home.removeAllViews();
         home.addView(page);
+    }
+
+    private void createProfileDrawer() {
+        drawerPanel = vertical();
+        drawerPanel.setBackgroundColor(Color.WHITE);
+        drawerPanel.setPadding(dp(16), dp(16), dp(16), dp(16));
+        int width = Math.min(dp(320), getResources().getDisplayMetrics().widthPixels - dp(56));
+        DrawerLayout.LayoutParams params = new DrawerLayout.LayoutParams(width, -1);
+        params.gravity = Gravity.LEFT;
+        drawerLayout.addView(drawerPanel, params);
+        drawerLayout.setDrawerTitle(Gravity.LEFT, "Profils Snapchat");
+
+        LinearLayout heading = horizontal();
+        heading.addView(text("Mes profils", 24, true), new LinearLayout.LayoutParams(0, -2, 1));
+        Button close = button("×", () -> drawerLayout.closeDrawer(drawerPanel));
+        close.setTextSize(26);
+        close.setContentDescription("Fermer le menu des profils");
+        styleDrawerButton(close, false);
+        close.setPadding(0, 0, 0, 0);
+        heading.addView(close, new LinearLayout.LayoutParams(dp(48), dp(48)));
+        drawerPanel.addView(heading);
+        TextView hint = text("Choisis le profil à utiliser", 13, false);
+        hint.setTextColor(Color.rgb(100, 116, 139));
+        drawerPanel.addView(hint);
+        gap(drawerPanel, 20);
+
+        ScrollView list = new ScrollView(this);
+        list.setFillViewport(true);
+        drawerProfiles = vertical();
+        list.addView(drawerProfiles);
+        drawerPanel.addView(list, new LinearLayout.LayoutParams(-1, 0, 1));
+        gap(drawerPanel, 12);
+        Button add = button("+ Ajouter un profil", () -> {
+            drawerLayout.closeDrawer(drawerPanel);
+            editProfile(null);
+        });
+        styleDrawerButton(add, true);
+        drawerPanel.addView(add, new LinearLayout.LayoutParams(-1, dp(56)));
+        drawerLayout.addDrawerListener(new DrawerLayout.SimpleDrawerListener() {
+            @Override public void onDrawerOpened(View drawerView) {
+                close.requestFocus();
+            }
+
+            @Override public void onDrawerClosed(View drawerView) {
+                menuButton.requestFocus();
+            }
+        });
+    }
+
+    private void renderDrawerProfiles() {
+        drawerProfiles.removeAllViews();
+        if (profiles.isEmpty()) {
+            drawerProfiles.addView(text("Aucun profil enregistré.\nAjoute ton premier profil ci-dessous.", 15, false));
+        }
+        for (Profile profile : profiles) {
+            boolean selected = profile == active;
+            Button choice = button((selected ? "✓  " : "") + profile.name + "\n@" + profile.username, () -> {
+                active = profile;
+                persist();
+                renderHome();
+                drawerLayout.closeDrawer(drawerPanel);
+            });
+            choice.setGravity(Gravity.CENTER_VERTICAL | Gravity.LEFT);
+            choice.setMaxLines(2);
+            choice.setEllipsize(TextUtils.TruncateAt.END);
+            choice.setSelected(selected);
+            choice.setContentDescription(profile.name + ", @" + profile.username
+                    + (selected ? ", profil actif" : ""));
+            styleDrawerButton(choice, selected);
+            LinearLayout.LayoutParams row = new LinearLayout.LayoutParams(-1, -2);
+            row.bottomMargin = dp(8);
+            choice.setMinHeight(dp(68));
+            drawerProfiles.addView(choice, row);
+        }
+    }
+
+    private void styleDrawerButton(Button button, boolean highlighted) {
+        GradientDrawable background = new GradientDrawable();
+        background.setColor(highlighted ? Color.rgb(238, 242, 255) : Color.WHITE);
+        background.setCornerRadius(dp(16));
+        button.setBackground(new RippleDrawable(ColorStateList.valueOf(0x224F46E5), background, null));
+        button.setTextColor(highlighted ? Color.rgb(67, 56, 202) : Color.rgb(30, 41, 59));
+        button.setPadding(dp(16), dp(10), dp(16), dp(10));
+        button.setMinWidth(0);
+        button.setMinimumWidth(0);
+        button.setElevation(0);
+        button.setStateListAnimator(null);
+    }
+
+    @Override protected void onSaveInstanceState(Bundle state) {
+        state.putBoolean("profileDrawerOpen", drawerLayout.isDrawerOpen(drawerPanel));
+        super.onSaveInstanceState(state);
     }
 
     private void editProfile(Profile current) {
@@ -366,7 +475,9 @@ public class MainActivity extends Activity {
         pendingProfile = active;
         pendingFriend = friend;
         browserStatus.setText("Chargement pour @" + friend.username + "…");
-        home.setVisibility(View.GONE);
+        drawerLayout.closeDrawer(drawerPanel, false);
+        drawerLayout.setDrawerLockMode(DrawerLayout.LOCK_MODE_LOCKED_CLOSED);
+        homePanel.setVisibility(View.GONE);
         browser.loadUrl(FORM_URL); // Fresh request; no programmatic submission.
     }
 
@@ -495,7 +606,8 @@ public class MainActivity extends Activity {
     private boolean blank(EditText e) { return value(e).isEmpty(); }
 
     @Override public void onBackPressed() {
-        if (home.getVisibility() == View.GONE) showHome();
+        if (drawerLayout.isDrawerVisible(drawerPanel)) drawerLayout.closeDrawer(drawerPanel);
+        else if (homePanel.getVisibility() == View.GONE) showHome();
         else super.onBackPressed();
     }
 
