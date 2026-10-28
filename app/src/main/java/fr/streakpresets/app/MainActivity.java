@@ -3,9 +3,8 @@ package fr.streakpresets.app;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.graphics.Color;
-import android.content.res.ColorStateList;
-import android.graphics.drawable.GradientDrawable;
-import android.graphics.drawable.RippleDrawable;
+import android.graphics.Paint;
+import android.net.Uri;
 import android.text.TextUtils;
 import android.view.Gravity;
 import android.os.Bundle;
@@ -45,6 +44,9 @@ public class MainActivity extends Activity {
     private static final String FORM_URL =
             "https://help.snapchat.com/hc/fr-fr/requests/new?co=true&ticket_form_id=149423";
     private static final String STORAGE_KEY = "streak_presets_v1";
+
+    private AppTheme ui;
+    private TextView browserContext;
 
     private final List<Profile> profiles = new ArrayList<>();
     private Profile active;
@@ -117,37 +119,51 @@ public class MainActivity extends Activity {
 
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
-        getWindow().setStatusBarColor(Color.rgb(252, 252, 252));
-        getWindow().setNavigationBarColor(Color.rgb(252, 252, 252));
-        getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR);
+        ui = new AppTheme(this);
+        if (android.os.Build.VERSION.SDK_INT >= 27) {
+            getWindow().setNavigationBarColor(ui.background);
+            getWindow().getDecorView().setSystemUiVisibility(
+                    View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR | View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR);
+        }
         restoreData();
 
         FrameLayout root = new FrameLayout(this);
-        root.setBackgroundColor(Color.WHITE);
+        root.setBackgroundColor(ui.background);
         drawerLayout = new DrawerLayout(this);
-        drawerLayout.setScrimColor(0x660F172A);
+        drawerLayout.setScrimColor((ui.text & 0x00FFFFFF) | 0x66000000);
         drawerLayout.setDrawerElevation(dp(12));
         drawerLayout.addView(root, new DrawerLayout.LayoutParams(-1, -1));
         setContentView(drawerLayout);
 
         LinearLayout browserPanel = vertical();
-        browserPanel.setBackgroundColor(Color.WHITE);
+        browserPanel.setBackgroundColor(ui.background);
         root.addView(browserPanel, new FrameLayout.LayoutParams(-1, -1));
         LinearLayout topBar = vertical();
-        topBar.setPadding(dp(12), dp(8), dp(12), dp(8));
-        topBar.setBackgroundColor(Color.rgb(246, 246, 246));
+        topBar.setPadding(dp(20), dp(16), dp(20), dp(16));
+        topBar.setBackgroundColor(ui.surface);
+        topBar.addView(text("Assistance Snapchat", 22, true));
+        browserContext = mutedText("Un ami, une demande à vérifier.", 13);
+        topBar.addView(browserContext);
+        gap(topBar, 12);
         LinearLayout actions = horizontal();
-        Button back = button("← Presets", () -> showHome());
-        Button refill = button("Re-remplir", () -> fillForm(0));
-        actions.addView(back, new LinearLayout.LayoutParams(0, dp(48), 1));
-        actions.addView(refill, new LinearLayout.LayoutParams(0, dp(48), 1));
+        Button back = button("← Retour", this::showHome);
+        back.setContentDescription("Retour aux profils et amis");
+        Button refill = primaryButton("Re-remplir", () -> fillForm(0));
+        LinearLayout.LayoutParams backParams = new LinearLayout.LayoutParams(0, -2, 1);
+        backParams.setMarginEnd(dp(8));
+        actions.addView(back, backParams);
+        actions.addView(refill, new LinearLayout.LayoutParams(0, -2, 1));
         topBar.addView(actions);
-        browserStatus = text("Le formulaire officiel reste sous le contrôle de l’utilisateur.", 12, false);
-        topBar.addView(browserStatus);
+        gap(topBar, 12);
+        browserStatus = mutedText("Vérifie les informations avant l’envoi manuel.", 13);
+        browserStatus.setBackground(ui.shape(ui.background, Color.TRANSPARENT));
+        browserStatus.setPadding(dp(12), dp(10), dp(12), dp(10));
+        browserStatus.setAccessibilityLiveRegion(View.ACCESSIBILITY_LIVE_REGION_POLITE);
+        topBar.addView(browserStatus, new LinearLayout.LayoutParams(-1, -2));
         browserPanel.addView(topBar);
 
         browser = new WebView(this);
-        browser.setBackgroundColor(Color.WHITE);
+        browser.setBackgroundColor(ui.surface);
         WebSettings webSettings = browser.getSettings();
         webSettings.setJavaScriptEnabled(true); // The real help form needs JavaScript.
         webSettings.setDomStorageEnabled(true);
@@ -159,8 +175,9 @@ public class MainActivity extends Activity {
         browser.setWebChromeClient(new WebChromeClient());
         browser.setWebViewClient(new WebViewClient() {
             @Override public void onPageFinished(WebView view, String url) {
-                if (pendingProfile != null && url.startsWith("https://help.snapchat.com/hc/fr-fr/requests/new")) {
-                    fillForm(0);
+                if (isSupportForm(url)) {
+                    applyFormTheme();
+                    if (pendingProfile != null) fillForm(0);
                 }
             }
 
@@ -171,27 +188,33 @@ public class MainActivity extends Activity {
                 }
             }
         });
-        browserPanel.addView(browser, new LinearLayout.LayoutParams(-1, 0, 1));
+        FrameLayout formCard = new FrameLayout(this);
+        formCard.setBackground(ui.shape(ui.surface, ui.border));
+        formCard.setClipToOutline(true);
+        formCard.addView(browser, new FrameLayout.LayoutParams(-1, -1));
+        LinearLayout.LayoutParams formParams = new LinearLayout.LayoutParams(-1, 0, 1);
+        formParams.setMargins(dp(12), dp(12), dp(12), dp(12));
+        browserPanel.addView(formCard, formParams);
 
         homePanel = vertical();
-        homePanel.setBackgroundColor(Color.rgb(250, 250, 250));
+        homePanel.setBackgroundColor(ui.background);
         root.addView(homePanel, new FrameLayout.LayoutParams(-1, -1));
         LinearLayout toolbar = horizontal();
         toolbar.setPadding(dp(8), dp(8), dp(16), dp(8));
-        toolbar.setBackgroundColor(Color.WHITE);
+        toolbar.setBackgroundColor(ui.surface);
         menuButton = button("☰", () -> drawerLayout.openDrawer(drawerPanel));
         menuButton.setTextSize(24);
         menuButton.setContentDescription("Ouvrir le menu des profils");
         styleDrawerButton(menuButton, false);
         menuButton.setPadding(0, 0, 0, 0);
         toolbar.addView(menuButton, new LinearLayout.LayoutParams(dp(48), dp(48)));
-        TextView title = text("🔥 Streak keeper", 22, true);
+        TextView title = text("Streak keeper", 22, true);
         toolbar.addView(title, new LinearLayout.LayoutParams(0, -2, 1));
         homePanel.addView(toolbar);
 
         home = new ScrollView(this);
         home.setFillViewport(true);
-        home.setBackgroundColor(Color.rgb(250, 250, 250));
+        home.setBackgroundColor(ui.background);
         homePanel.addView(home, new LinearLayout.LayoutParams(-1, 0, 1));
         createProfileDrawer();
         renderHome();
@@ -211,56 +234,108 @@ public class MainActivity extends Activity {
 
     private void renderHome() {
         LinearLayout page = vertical();
-        page.setPadding(dp(16), dp(20), dp(16), dp(28));
+        page.setPadding(dp(AppTheme.PAGE_PADDING), dp(20), dp(AppTheme.PAGE_PADDING), dp(28));
         renderDrawerProfiles();
         if (active == null) {
-            gap(page, 25);
-            page.addView(text("Ouvre le menu ☰ pour ajouter ton premier profil Snapchat.", 16, false));
-            home.removeAllViews();
-            home.addView(page);
-            return;
+            LinearLayout welcome = card();
+            welcome.addView(text("Bienvenue", 26, true));
+            gap(welcome, 8);
+            welcome.addView(mutedText("Tes profils et tes amis, au même endroit.", 15));
+            gap(welcome, 16);
+            welcome.addView(mutedText("Ouvre le menu ☰, puis ajoute ton premier profil pour commencer.", 15));
+            page.addView(welcome);
+        } else {
+            LinearLayout summary = card();
+            summary.addView(mutedText("PROFIL ACTIF", 11));
+            gap(summary, 4);
+            summary.addView(text(active.name, 24, true));
+            summary.addView(mutedText("@" + active.username, 15));
+            summary.addView(mutedText(active.email, 13));
+            page.addView(summary);
+            gap(page, 24);
+
+            LinearLayout heading = horizontal();
+            heading.addView(text("Mes amis", 22, true), new LinearLayout.LayoutParams(0, -2, 1));
+            TextView count = text(Integer.toString(active.friends.size()), 14, true);
+            count.setBackground(ui.shape(ui.accentSoft, Color.TRANSPARENT));
+            count.setPadding(dp(12), dp(6), dp(12), dp(6));
+            heading.addView(count);
+            page.addView(heading);
+            gap(page, 12);
+            page.addView(primaryButton("+ Ajouter un ami", this::addFriend), new LinearLayout.LayoutParams(-1, -2));
+            gap(page, 8);
+            page.addView(button("Copier depuis un autre profil", this::copyFriends), new LinearLayout.LayoutParams(-1, -2));
+            gap(page, 16);
+            if (active.friends.isEmpty()) {
+                LinearLayout empty = card();
+                empty.addView(text("Ta liste commence ici", 17, true));
+                gap(empty, 4);
+                empty.addView(mutedText("Ajoute un ami ou copie ceux d’un autre profil.", 14));
+                page.addView(empty);
+            }
+            for (Friend friend : new ArrayList<>(active.friends)) {
+                LinearLayout friendCard = card();
+                LinearLayout identity = horizontal();
+                LinearLayout labels = vertical();
+                labels.addView(text(friend.name, 17, true));
+                labels.addView(mutedText("@" + friend.username, 13));
+                identity.addView(labels, new LinearLayout.LayoutParams(0, -2, 1));
+                Button remove = button("×", () -> removeFriend(friend));
+                ui.button(remove, AppTheme.ButtonStyle.QUIET);
+                remove.setTextSize(24);
+                remove.setPadding(0, 0, 0, 0);
+                remove.setContentDescription("Supprimer l’ami " + friend.name);
+                identity.addView(remove, new LinearLayout.LayoutParams(dp(48), dp(48)));
+                friendCard.addView(identity);
+                gap(friendCard, 12);
+                friendCard.addView(button("Préparer la demande →", () -> prepare(friend)), new LinearLayout.LayoutParams(-1, -2));
+                LinearLayout.LayoutParams row = new LinearLayout.LayoutParams(-1, -2);
+                row.bottomMargin = dp(12);
+                page.addView(friendCard, row);
+            }
         }
-
-        gap(page, 12);
-        page.addView(text("Profil actif : " + active.name, 18, true));
-        page.addView(text("@" + active.username + " · " + active.email, 13, false));
-
-        gap(page, 18);
-        page.addView(text("Amis de " + active.name + " (" + active.friends.size() + ")", 19, true));
-        page.addView(button("+ Ajouter un ami", this::addFriend));
-        page.addView(button("Copier les amis d’un autre profil", this::copyFriends));
-        gap(page, 8);
-        if (active.friends.isEmpty()) {
-            page.addView(text("Aucun ami enregistré. Ajoute-en un pour commencer.", 14, false));
-        }
-
-        for (Friend friend : new ArrayList<>(active.friends)) {
-            LinearLayout friendRow = horizontal();
-            friendRow.setPadding(dp(4), dp(4), dp(4), dp(4));
-            LinearLayout labelBox = vertical();
-            labelBox.addView(text(friend.name, 16, true));
-            labelBox.addView(text("@" + friend.username, 12, false));
-            friendRow.addView(labelBox, new LinearLayout.LayoutParams(0, -2, 1));
-            friendRow.addView(button("Préparer", () -> prepare(friend)));
-            friendRow.addView(button("×", () -> removeFriend(friend)));
-            page.addView(friendRow);
-            View line = new View(this);
-            line.setBackgroundColor(Color.rgb(227, 227, 227));
-            page.addView(line, new LinearLayout.LayoutParams(-1, dp(1)));
-        }
-
         gap(page, 20);
-        page.addView(text("Comment ça marche ?", 16, true));
-        page.addView(text("Choisis un ami. L’application préremplit les champs connus du formulaire officiel, puis te laisse vérifier le CAPTCHA et cliquer toi-même sur Envoyer.", 13, false));
-        gap(page, 10);
-        page.addView(text("Projet personnel non affilié à Snapchat. Aucun mot de passe n’est demandé et aucune demande n’est envoyée automatiquement.", 12, false));
+        Button guide = button("Comment ça marche ?", this::showGuide);
+        ui.button(guide, AppTheme.ButtonStyle.QUIET);
+        guide.setBackgroundColor(Color.TRANSPARENT);
+        guide.setTextColor(ui.muted);
+        guide.setPaintFlags(guide.getPaintFlags() | Paint.UNDERLINE_TEXT_FLAG);
+        page.addView(guide, new LinearLayout.LayoutParams(-1, -2));
         home.removeAllViews();
         home.addView(page);
     }
 
+    private void showGuide() {
+        LinearLayout content = vertical();
+        content.setPadding(dp(24), dp(8), dp(24), dp(16));
+        String[][] steps = {
+                {"1. Choisis ton profil", "Ouvre ☰ pour créer ou sélectionner un profil. Le menu ⋮ permet de le modifier."},
+                {"2. Prépare une demande", "Ajoute un ami ou copie une liste, puis touche « Préparer la demande »."},
+                {"3. Vérifie et envoie", "Relis le formulaire Snapchat, complète le CAPTCHA si demandé, puis envoie toi-même."}
+        };
+        for (String[] step : steps) {
+            content.addView(text(step[0], 16, true));
+            gap(content, 4);
+            content.addView(mutedText(step[1], 14));
+            gap(content, 16);
+        }
+        content.addView(mutedText("Projet non affilié à Snapchat. Aucun mot de passe demandé, aucun envoi automatique.", 12));
+        ScrollView scroll = new ScrollView(this);
+        scroll.addView(content);
+        showDialog(new AlertDialog.Builder(this).setTitle("Comment ça marche ?")
+                .setView(scroll).setPositiveButton("Compris", null));
+    }
+
+    private LinearLayout card() {
+        LinearLayout card = vertical();
+        card.setBackground(ui.shape(ui.surface, ui.border));
+        card.setPadding(dp(18), dp(18), dp(18), dp(18));
+        return card;
+    }
+
     private void createProfileDrawer() {
         drawerPanel = vertical();
-        drawerPanel.setBackgroundColor(Color.WHITE);
+        drawerPanel.setBackgroundColor(ui.surface);
         drawerPanel.setPadding(dp(16), dp(16), dp(16), dp(16));
         int width = Math.min(dp(320), getResources().getDisplayMetrics().widthPixels - dp(56));
         DrawerLayout.LayoutParams params = new DrawerLayout.LayoutParams(width, -1);
@@ -278,7 +353,7 @@ public class MainActivity extends Activity {
         heading.addView(close, new LinearLayout.LayoutParams(dp(48), dp(48)));
         drawerPanel.addView(heading);
         TextView hint = text("Choisis le profil à utiliser", 13, false);
-        hint.setTextColor(Color.rgb(100, 116, 139));
+        hint.setTextColor(ui.muted);
         drawerPanel.addView(hint);
         gap(drawerPanel, 20);
 
@@ -292,8 +367,8 @@ public class MainActivity extends Activity {
             drawerLayout.closeDrawer(drawerPanel);
             editProfile(null);
         });
-        styleDrawerButton(add, true);
-        drawerPanel.addView(add, new LinearLayout.LayoutParams(-1, dp(56)));
+        ui.button(add, AppTheme.ButtonStyle.PRIMARY);
+        drawerPanel.addView(add, new LinearLayout.LayoutParams(-1, -2));
         drawerLayout.addDrawerListener(new DrawerLayout.SimpleDrawerListener() {
             @Override public void onDrawerOpened(View drawerView) {
                 close.requestFocus();
@@ -357,16 +432,9 @@ public class MainActivity extends Activity {
     }
 
     private void styleDrawerButton(Button button, boolean highlighted) {
-        GradientDrawable background = new GradientDrawable();
-        background.setColor(highlighted ? Color.rgb(238, 242, 255) : Color.WHITE);
-        background.setCornerRadius(dp(16));
-        button.setBackground(new RippleDrawable(ColorStateList.valueOf(0x224F46E5), background, null));
-        button.setTextColor(highlighted ? Color.rgb(67, 56, 202) : Color.rgb(30, 41, 59));
-        button.setPadding(dp(16), dp(10), dp(16), dp(10));
-        button.setMinWidth(0);
-        button.setMinimumWidth(0);
-        button.setElevation(0);
-        button.setStateListAnimator(null);
+        float size = button.getTextSize() / getResources().getDisplayMetrics().scaledDensity;
+        ui.button(button, highlighted ? AppTheme.ButtonStyle.SECONDARY : AppTheme.ButtonStyle.QUIET);
+        button.setTextSize(size);
     }
 
     @Override protected void onSaveInstanceState(Bundle state) {
@@ -387,15 +455,22 @@ public class MainActivity extends Activity {
         EditText phone = input(fields, "Téléphone avec indicatif (ex : +33...)", candidate.phone);
         CheckBox descriptionEnabled = new CheckBox(this);
         descriptionEnabled.setText("Ajouter une description à la demande");
+        ui.text(descriptionEnabled, 15, false);
+        descriptionEnabled.setMinHeight(dp(48));
         descriptionEnabled.setChecked(candidate.descriptionEnabled);
         fields.addView(descriptionEnabled);
         EditText description = input(fields, "Description de la demande (facultatif)", candidate.description);
-        description.setVisibility(descriptionEnabled.isChecked() ? View.VISIBLE : View.GONE);
+        description.setSingleLine(false);
+        description.setInputType(android.text.InputType.TYPE_CLASS_TEXT | android.text.InputType.TYPE_TEXT_FLAG_MULTI_LINE);
+        description.setMinLines(3);
+        description.setGravity(Gravity.TOP | Gravity.START);
+        View descriptionField = (View) description.getParent();
+        descriptionField.setVisibility(descriptionEnabled.isChecked() ? View.VISIBLE : View.GONE);
         descriptionEnabled.setOnCheckedChangeListener((buttonView, checked) ->
-                description.setVisibility(checked ? View.VISIBLE : View.GONE));
+                descriptionField.setVisibility(checked ? View.VISIBLE : View.GONE));
         ScrollView scroll = new ScrollView(this);
         scroll.addView(fields);
-        new AlertDialog.Builder(this)
+        showDialog(new AlertDialog.Builder(this)
                 .setTitle(adding ? "Nouveau preset" : "Modifier le preset")
                 .setView(scroll)
                 .setNegativeButton("Annuler", null)
@@ -416,7 +491,7 @@ public class MainActivity extends Activity {
                     }
                     persist();
                     renderHome();
-                }).show();
+                }));
     }
 
     private void addFriend() {
@@ -425,7 +500,9 @@ public class MainActivity extends Activity {
         fields.setPadding(dp(18), dp(8), dp(18), dp(8));
         EditText alias = input(fields, "Nom à afficher", "");
         EditText username = input(fields, "Pseudo Snapchat de l’ami", "");
-        new AlertDialog.Builder(this).setTitle("Ajouter un ami").setView(fields)
+        ScrollView scroll = new ScrollView(this);
+        scroll.addView(fields);
+        showDialog(new AlertDialog.Builder(this).setTitle("Ajouter un ami").setView(scroll)
                 .setNegativeButton("Annuler", null)
                 .setPositiveButton("Ajouter", (dialog, which) -> {
                     if (blank(username)) return;
@@ -437,7 +514,7 @@ public class MainActivity extends Activity {
                     active.friends.add(new Friend(blank(alias) ? u : value(alias), u));
                     persist();
                     renderHome();
-                }).show();
+                }));
     }
 
     private boolean hasFriend(Profile p, String username) {
@@ -455,7 +532,7 @@ public class MainActivity extends Activity {
         }
         String[] labels = new String[others.size()];
         for (int i = 0; i < others.size(); i++) labels[i] = others.get(i).name;
-        new AlertDialog.Builder(this).setTitle("Importer tous les amis de…")
+        showDialog(new AlertDialog.Builder(this).setTitle("Importer tous les amis de…")
                 .setItems(labels, (dialog, which) -> {
                     int count = 0;
                     for (Friend f : others.get(which).friends) {
@@ -467,21 +544,21 @@ public class MainActivity extends Activity {
                     persist();
                     renderHome();
                     Toast.makeText(this, count + " ami(s) importé(s).", Toast.LENGTH_SHORT).show();
-                }).show();
+                }));
     }
 
     private void removeFriend(Friend f) {
-        new AlertDialog.Builder(this).setTitle("Supprimer " + f.name + " ?")
+        showDialog(new AlertDialog.Builder(this).setTitle("Supprimer " + f.name + " ?")
                 .setNegativeButton("Annuler", null)
                 .setPositiveButton("Supprimer", (dialog, which) -> {
                     active.friends.remove(f);
                     persist();
                     renderHome();
-                }).show();
+                }));
     }
 
     private void confirmDeleteProfile(Profile toDelete) {
-        new AlertDialog.Builder(this).setTitle("Supprimer le profil " + toDelete.name + " ?")
+        showDialog(new AlertDialog.Builder(this).setTitle("Supprimer le profil " + toDelete.name + " ?")
                 .setMessage("@" + toDelete.username + "\nCela supprimera aussi sa liste locale d’amis. Cette action est définitive.")
                 .setNegativeButton("Annuler", null)
                 .setPositiveButton("Supprimer", (dialog, which) -> {
@@ -489,12 +566,13 @@ public class MainActivity extends Activity {
                     if (active == toDelete) active = profiles.isEmpty() ? null : profiles.get(0);
                     persist();
                     renderHome();
-                }).show();
+                }));
     }
 
     private void prepare(Friend friend) {
         pendingProfile = active;
         pendingFriend = friend;
+        browserContext.setText(active.name + " · @" + friend.username);
         browserStatus.setText("Chargement pour @" + friend.username + "…");
         drawerLayout.closeDrawer(drawerPanel, false);
         drawerLayout.setDrawerLockMode(DrawerLayout.LOCK_MODE_LOCKED_CLOSED);
@@ -506,11 +584,13 @@ public class MainActivity extends Activity {
     private void fillForm(int attempt) {
         if (pendingProfile == null || pendingFriend == null) return;
         String currentUrl = browser.getUrl();
-        if (currentUrl == null || !currentUrl.startsWith("https://help.snapchat.com/hc/fr-fr/requests/new")) {
+        if (!isSupportForm(currentUrl)) {
             browserStatus.setText("Le formulaire n’est plus affiché. Reviens aux presets pour recommencer.");
             return;
         }
+        applyFormTheme();
         Profile p = pendingProfile;
+        Friend friend = pendingFriend;
         StringBuilder js = new StringBuilder("(function(){")
                 .append("const fields=[")
                 .append(field("request_anonymous_requester_email", p.email)).append(",")
@@ -530,6 +610,7 @@ public class MainActivity extends Activity {
                 .append("el.dispatchEvent(new Event('change',{bubbles:true}));filled++;}")
                 .append("return JSON.stringify({filled:filled,missing:missing});})()");
         browser.evaluateJavascript(js.toString(), response -> {
+            if (pendingProfile != p || pendingFriend != friend) return;
             try {
                 String actual = response;
                 if (actual != null && actual.startsWith("\"")) {
@@ -538,7 +619,9 @@ public class MainActivity extends Activity {
                 JSONObject outcome = new JSONObject(actual);
                 int filled = outcome.optInt("filled");
                 if (filled < 5 && attempt < 3) {
-                    browser.postDelayed(() -> fillForm(attempt + 1), 800);
+                    browser.postDelayed(() -> {
+                        if (pendingProfile == p && pendingFriend == friend) fillForm(attempt + 1);
+                    }, 800);
                 } else {
                     browserStatus.setText(filled + " champ(s) renseigné(s) pour @" + pendingFriend.username
                             + ". Vérifie les données, le CAPTCHA et clique sur Envoyer toi-même.");
@@ -583,6 +666,44 @@ public class MainActivity extends Activity {
         }
     }
 
+    private static boolean isSupportForm(String url) {
+        if (url == null) return false;
+        Uri uri = Uri.parse(url);
+        return "https".equals(uri.getScheme()) && "help.snapchat.com".equals(uri.getHost())
+                && "/hc/fr-fr/requests/new".equals(uri.getPath());
+    }
+
+    private void applyFormTheme() {
+        if (!isSupportForm(browser.getUrl())) return;
+        browser.evaluateJavascript("(function(){let s=document.getElementById('streak-keeper-theme');"
+                + "if(!s){s=document.createElement('style');s.id='streak-keeper-theme';document.head.appendChild(s);}"
+                + "s.textContent=" + JSONObject.quote(ui.formCss()) + ";})()", null);
+    }
+
+    private TextView mutedText(String value, int size) {
+        TextView view = text(value, size, false);
+        view.setTextColor(ui.muted);
+        return view;
+    }
+
+    private Button primaryButton(String label, Runnable action) {
+        Button view = button(label, action);
+        ui.button(view, AppTheme.ButtonStyle.PRIMARY);
+        return view;
+    }
+
+    private AlertDialog showDialog(AlertDialog.Builder builder) {
+        AlertDialog dialog = builder.create();
+        dialog.setOnShowListener(ignored -> {
+            Button positive = dialog.getButton(AlertDialog.BUTTON_POSITIVE);
+            Button negative = dialog.getButton(AlertDialog.BUTTON_NEGATIVE);
+            if (positive != null) ui.button(positive, AppTheme.ButtonStyle.SECONDARY);
+            if (negative != null) ui.button(negative, AppTheme.ButtonStyle.QUIET);
+        });
+        dialog.show();
+        return dialog;
+    }
+
     private int dp(int n) { return (int) (n * getResources().getDisplayMetrics().density + .5f); }
     private LinearLayout vertical() {
         LinearLayout l = new LinearLayout(this);
@@ -598,26 +719,29 @@ public class MainActivity extends Activity {
     private TextView text(String value, int sp, boolean bold) {
         TextView t = new TextView(this);
         t.setText(value);
-        t.setTextColor(Color.rgb(28, 30, 34));
-        t.setTextSize(sp);
-        if (bold) t.setTypeface(null, android.graphics.Typeface.BOLD);
-        t.setPadding(dp(3), dp(3), dp(3), dp(5));
+        ui.text(t, sp, bold);
+        t.setPadding(0, dp(2), 0, dp(4));
         return t;
     }
     private Button button(String label, Runnable action) {
         Button b = new Button(this);
         b.setText(label);
-        b.setAllCaps(false);
+        ui.button(b, AppTheme.ButtonStyle.SECONDARY);
         b.setOnClickListener(v -> action.run());
         return b;
     }
     private EditText input(LinearLayout parent, String hint, String original) {
+        LinearLayout field = vertical();
+        field.addView(mutedText(hint, 12));
         EditText e = new EditText(this);
         e.setSingleLine(true);
         e.setText(original);
         e.setHint(hint);
-        e.setTextSize(15);
-        parent.addView(e, new LinearLayout.LayoutParams(-1, dp(54)));
+        ui.input(e);
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, -2);
+        params.bottomMargin = dp(12);
+        field.addView(e, new LinearLayout.LayoutParams(-1, -2));
+        parent.addView(field, params);
         return e;
     }
     private void gap(LinearLayout container, int n) {

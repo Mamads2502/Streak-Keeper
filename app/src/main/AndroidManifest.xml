@@ -6,7 +6,7 @@
         android:allowBackup="false"
         android:label="Streak keeper"
         android:usesCleartextTraffic="false"
-        android:theme="@android:style/Theme.Material.Light.NoActionBar">
+        android:theme="@style/Theme.StreakKeeper">
         <activity
             android:name=".MainActivity"
             android:exported="true"

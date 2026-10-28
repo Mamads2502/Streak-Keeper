@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Keep this light-only release consistent with the system dark-mode setting. -->
+    <style name="Theme.StreakKeeper" parent="Theme.StreakKeeper.Base">
+        <item name="android:forceDarkAllowed">false</item>
+    </style>
+    <style name="Theme.StreakKeeper.Dialog" parent="Theme.StreakKeeper.Dialog.Base">
+        <item name="android:forceDarkAllowed">false</item>
+    </style>
+</resources>

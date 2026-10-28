@@ -10,6 +10,7 @@ Application Android expérimentale et non officielle permettant de gérer plusie
 
 - Un seul module Android : `app`, avec le package et l’identifiant d’application `fr.streakpresets.app`.
 - `app/src/main/java/fr/streakpresets/app/MainActivity.java` regroupe l’interface native construite en Java, la logique des profils et amis, la persistance et le WebView. Les modèles `Profile` et `Friend` sont des classes internes.
+- `AppTheme.java` centralise les composants et les styles CSS du formulaire. `res/values/attrs.xml` définit les rôles de couleur, `colors.xml` la palette claire et l’accent unique `sk_accent`, `styles.xml` le thème Android et celui des dialogues.
 - Les profils, leurs amis et l’identifiant du profil actif sont sérialisés en JSON dans les préférences privées de l’activité (`SharedPreferences`), sous la clé `streak_presets_v1`.
 - Le WebView charge le formulaire hébergé sur `help.snapchat.com`. Le préremplissage utilise `evaluateJavascript` et les identifiants HTML des champs, avec des tentatives différées si les champs ne sont pas encore disponibles.
 - `app/src/main/AndroidManifest.xml` déclare l’activité de lancement et la permission Internet. Les fichiers Gradle à la racine et dans `app/` définissent la compilation ; le wrapper se trouve dans `gradle/wrapper/`.
@@ -19,6 +20,7 @@ Application Android expérimentale et non officielle permettant de gérer plusie
 Fonctionnalités présentes dans le code, dont le fonctionnement sur appareil reste à valider :
 
 - Création, sélection, modification et suppression de profils : nom du preset sans exemple nominatif, pseudo, e-mail unique, téléphone et description facultative. Une case à cocher affiche ou masque la description ; son état est enregistré et contrôle le préremplissage.
+- Thème clair par défaut : cartes blanches, fond neutre, accent indigo unique et composants partagés pour l’accueil, le menu, les dialogues, champs et écran du formulaire. Guide en trois étapes accessible par le lien grisé et souligné « Comment ça marche ? », y compris sans profil.
 - Menu latéral gauche animé : barre supérieure fixe avec ☰, ouverture par balayage depuis le bord gauche, profils défilants avec sélection active et ajout fixé en bas. Fermeture par balayage à gauche, toucher extérieur, × ou Retour Android. La sélection et la création conservent leur persistance existante.
 - Actions de profil regroupées dans le bouton ⋮ de chaque ligne du tiroir : modification et suppression avec confirmation nominative. Aucun bouton de gestion sur l’accueil ; modifier ou supprimer un profil inactif conserve le profil actif. Créer un profil le sélectionne ; supprimer le profil actif sélectionne le premier restant, ou aucun si la liste est vide.
 - Liste d’amis propre à chaque profil : ajout et suppression avec confirmation ; utilisation du pseudo comme nom affiché si aucun nom n’est saisi.
@@ -30,6 +32,8 @@ Fonctionnalités présentes dans le code, dont le fonctionnement sur appareil re
 ## Décisions techniques actuelles
 
 - Android natif en Java 17, interface construite en Java. AndroidX `drawerlayout:1.2.0` gère les gestes, l’animation, le voile et l’accessibilité du tiroir ; l’activité et le stockage existants sont conservés.
+- L’accent se modifie dans `res/values/colors.xml` (`sk_accent`) ; teintes secondaires dérivées et contraste noir/blanc automatique pour les boutons pleins. Les rôles sémantiques préparent de futurs thèmes ; seul le thème clair est implémenté. Sur Android 8.0, la barre de navigation reste foncée pour préserver la lisibilité des icônes système.
+- Le WebView reçoit une feuille CSS idempotente uniquement sur le formulaire HTTPS `help.snapchat.com/hc/fr-fr/requests/new`. Aucun élément ni validation n’est masqué ; les iframes et les autres pages restent inchangées. Les callbacks de préremplissage devenus obsolètes après navigation sont ignorés.
 - Le tiroir mesure au maximum 320 dp en gardant une zone extérieure visible. Son ouverture est restaurée après recréation de l’activité. Il est verrouillé pendant le formulaire WebView puis déverrouillé au retour à l’accueil.
 - Android Gradle Plugin 8.7.3 et Gradle 8.9 ; `compileSdk 35`, `targetSdk 34`, `minSdk 26` (Android 8.0 minimum).
 - Migration des profils existants : le champ JSON `email` remplace `contactEmail` et `accountEmail`, avec priorité à l’ancien e-mail de contact puis repli sur celui du compte. La même adresse alimente les deux identifiants HTML e-mail déjà ciblés, si présents.
@@ -42,9 +46,9 @@ Fonctionnalités présentes dans le code, dont le fonctionnement sur appareil re
 
 ## Problèmes connus et limites
 
-- Validation du menu latéral et des options ⋮ par profil le 28 octobre 2026 : `./gradlew assembleDebug lintDebug --offline` réussit. APK généré dans `app/build/outputs/apk/debug/app-debug.apk`, intégrité ZIP et signature (`apksigner verify`) vérifiées. Les gestes et le rendu restent à tester sur Waydroid.
+- Validation du thème clair le 28 octobre 2026 : `./gradlew assembleDebug lintDebug --offline` réussit. APK debug vérifié (intégrité ZIP et signature). Contrastes calculés : texte principal 15,11:1, texte secondaire sur fond 5,01:1, bouton principal 6,29:1. Waydroid est arrêté ; le rendu, le formulaire distant et les gestes restent à tester sur appareil.
 - Le fonctionnement sur appareil et le préremplissage réel du formulaire n’ont pas été testés lors de cette modification.
-- Lint termine sans erreur, avec 16 avertissements : API cible ancienne, activation de JavaScript, règles d’extraction des données, icône absente, chaînes d’interface écrites directement en Java et alignements à gauche explicites (tiroir demandé à gauche).
+- Lint termine sans erreur, avec 17 avertissements : API cible ancienne, activation de JavaScript, règles d’extraction des données, icône absente, chaînes d’interface écrites directement en Java et alignements à gauche explicites (tiroir demandé à gauche).
 - Aucun test automatisé n’est présent dans les sources examinées.
 - Le préremplissage dépend des identifiants HTML du site et de son chargement dynamique. Le README indique des identifiants observés le 27 octobre 2026 ; leur validité actuelle n’a pas été vérifiée.
 - Le site peut bloquer les WebViews ou modifier son formulaire. La conservation des cookies ne garantit pas l’absence de CAPTCHA.
@@ -54,7 +58,7 @@ Fonctionnalités présentes dans le code, dont le fonctionnement sur appareil re
 
 ## Prochaines étapes
 
-1. Tester le menu latéral sur Waydroid selon la liste du README : gestes, fermetures, création/sélection persistante, liste longue, petits écrans, rotation et retour depuis le formulaire. Attendre le retour de l’utilisateur avant de proposer une fusion dans `main`.
+1. Tester le thème clair et le menu sur Waydroid selon les listes du README : accueil, guide au clic, dialogues, saisie, gestes, sélection persistante, liste longue, grands caractères, rotation et formulaire officiel. Attendre le retour de l’utilisateur avant de proposer une fusion dans `main`.
 2. Tester sur émulateur ou appareil les opérations sur les profils et amis, la copie sans doublons, la persistance après redémarrage et la navigation. Vérifier aussi la migration des anciens e-mails et descriptions, ainsi que le masquage et la désactivation du préremplissage de la description via la case à cocher.
 3. Vérifier le chargement du formulaire, le préremplissage, le bouton « Re-remplir » et les erreurs réseau, sans envoyer de véritable demande lors du premier test, conformément au README.
 4. Corriger les problèmes constatés et ajouter les vérifications adaptées aux changements ; actualiser le statut de validation dans la documentation.

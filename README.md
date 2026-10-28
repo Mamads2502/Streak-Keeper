@@ -17,6 +17,16 @@ Application Android **non officielle**, développée en Java natif pour gérer d
 
 Les anciens profils reprennent leur e-mail de contact (ou celui du compte si le premier est vide). L’adresse unique sert au préremplissage des champs e-mail connus du formulaire. Les descriptions existantes restent activées ; décocher leur option conserve le texte mais désactive son préremplissage.
 
+## Identité visuelle
+
+Le thème par défaut est clair : fond gris très léger, cartes blanches, typographie sans-serif et accent indigo. Accueil, menu latéral, dialogues, champs et écran d’assistance partagent les mêmes composants. Le lien grisé et souligné « Comment ça marche ? » ouvre un guide en trois étapes.
+
+Pour changer l’accent, modifier uniquement `sk_accent` dans `app/src/main/res/values/colors.xml`, puis recompiler. Les teintes secondaires, boutons, contrôles Android et styles du formulaire en découlent ; le texte des boutons pleins choisit automatiquement le noir ou le blanc selon le contraste.
+
+Les rôles de couleur sont déclarés dans `attrs.xml`, associés au thème dans `styles.xml`, et consommés par `AppTheme.java` (composants et CSS du formulaire). Un futur thème pourra fournir une autre palette sans modifier la logique métier. Aucun mode sombre ni sélecteur de thème n’est implémenté.
+
+Le formulaire officiel reçoit uniquement des styles CSS sur sa page HTTPS connue : couleurs, typographie, espacements et champs. Aucun champ, message de validation, CAPTCHA ou bouton d’envoi n’est masqué. Les pages externes et le contenu des iframes restent gérés par leurs sites ; des changements du site Snapchat peuvent limiter l’harmonisation.
+
 ## Prérequis
 
 Streak keeper est une application **Android native en Java** : elle ne s'exécute pas directement comme une application de bureau Ubuntu. Sous Linux, on peut la compiler et la lancer dans un émulateur Android ou sur un vrai téléphone.
@@ -147,6 +157,14 @@ Une fois l'APK créé, tu peux aussi le transférer sur le téléphone et l'ouvr
 6. Vérifier la description et toute demande de reCAPTCHA.
 
 **Pour le tout premier test, n'envoie aucun véritable formulaire : vérifie seulement l'affichage et le préremplissage.** Lors d'une utilisation réelle, l'envoi reste manuel et ne concerne qu'un ami à la fois.
+
+### Vérifier le thème clair sur Waydroid
+
+- Vérifier l’accueil vide et rempli, les noms longs, le menu et ses options ⋮, les dialogues de création/modification/suppression et les cases à cocher.
+- Toucher le lien grisé « Comment ça marche ? » : les explications doivent apparaître uniquement après le clic et pouvoir être refermées.
+- Vérifier que le libellé de chaque champ reste lisible pendant la saisie ; décocher la description doit masquer son champ et son libellé.
+- Tester une police agrandie, le paysage et le clavier ouvert ; les formulaires et le guide doivent rester consultables.
+- Ouvrir l’assistance, tester Retour et Re-remplir, et vérifier la présence des champs, messages de validation et CAPTCHA sans envoyer de demande réelle. Vérifier également les erreurs réseau.
 
 ### Vérifier le menu sur Waydroid
 

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Change this single value to change the app's accent, including the web form. -->
+    <color name="sk_accent">#4F46E5</color>
+    <color name="sk_background">#F6F7FA</color>
+    <color name="sk_surface">#FFFFFF</color>
+    <color name="sk_text">#202635</color>
+    <color name="sk_muted">#626B7C</color>
+    <color name="sk_border">#DEE2EA</color>
+</resources>

@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Only the light theme is shipped. Future themes override these semantic roles. -->
+    <style name="Theme.StreakKeeper.Base" parent="android:style/Theme.Material.Light.NoActionBar">
+        <item name="android:fontFamily">sans</item>
+        <item name="android:colorAccent">@color/sk_accent</item>
+        <item name="android:windowBackground">@color/sk_background</item>
+        <item name="android:colorBackground">@color/sk_background</item>
+        <item name="android:colorForeground">@color/sk_text</item>
+        <item name="android:textColorPrimary">@color/sk_text</item>
+        <item name="android:textColorSecondary">@color/sk_muted</item>
+        <item name="android:statusBarColor">@color/sk_surface</item>
+        <item name="android:navigationBarColor">@color/sk_text</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:alertDialogTheme">@style/Theme.StreakKeeper.Dialog</item>
+        <item name="skBackground">@color/sk_background</item>
+        <item name="skSurface">@color/sk_surface</item>
+        <item name="skText">@color/sk_text</item>
+        <item name="skMuted">@color/sk_muted</item>
+        <item name="skBorder">@color/sk_border</item>
+    </style>
+    <style name="Theme.StreakKeeper.Dialog.Base" parent="android:style/Theme.Material.Light.Dialog.Alert">
+        <item name="android:fontFamily">sans</item>
+        <item name="android:colorAccent">@color/sk_accent</item>
+        <item name="android:textColorPrimary">@color/sk_text</item>
+        <item name="android:textColorSecondary">@color/sk_muted</item>
+        <item name="android:windowBackground">@drawable/dialog_surface</item>
+        <item name="android:colorBackground">@color/sk_surface</item>
+    </style>
+    <style name="Theme.StreakKeeper" parent="Theme.StreakKeeper.Base" />
+    <style name="Theme.StreakKeeper.Dialog" parent="Theme.StreakKeeper.Dialog.Base" />
+</resources>
