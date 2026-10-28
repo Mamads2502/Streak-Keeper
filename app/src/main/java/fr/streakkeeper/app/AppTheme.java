@@ -1,4 +1,4 @@
-package fr.streakpresets.app;
+package fr.streakkeeper.app;
 
 import android.content.Context;
 import android.content.res.ColorStateList;

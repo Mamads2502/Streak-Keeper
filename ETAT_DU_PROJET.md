@@ -8,10 +8,10 @@ Application Android expérimentale et non officielle permettant de gérer plusie
 
 ## Architecture
 
-- Un seul module Android : `app`, avec le package et l’identifiant d’application `fr.streakpresets.app`.
-- `app/src/main/java/fr/streakpresets/app/MainActivity.java` regroupe l’interface native construite en Java, la logique des profils et amis, la persistance et le WebView. Les modèles `Profile` et `Friend` sont des classes internes.
+- Un seul module Android : `app`, avec le package/namespace Java `fr.streakkeeper.app` et l’identifiant d’installation historique `fr.streakpresets.app`.
+- `app/src/main/java/fr/streakkeeper/app/MainActivity.java` regroupe l’interface native construite en Java, la logique des profils et amis, la persistance et le WebView. Les modèles `Profile` et `Friend` sont des classes internes.
 - `AppTheme.java` centralise les composants et les styles CSS du formulaire. `res/values/attrs.xml` définit les rôles de couleur, `colors.xml` la palette claire et l’accent unique `sk_accent`, `styles.xml` le thème Android et celui des dialogues.
-- Les profils, leurs amis et l’identifiant du profil actif sont sérialisés en JSON dans les préférences privées de l’activité (`SharedPreferences`), sous la clé `streak_presets_v1`.
+- Les profils, leurs amis et l’identifiant du profil actif sont sérialisés en JSON dans le fichier privé `MainActivity` (`SharedPreferences`), sous la clé `streak_keeper_v1`. La lecture accepte l’ancienne clé `streak_presets_v1` si la nouvelle est absente ; la prochaine sauvegarde écrit la nouvelle clé et supprime l’ancienne dans la même opération.
 - Le WebView charge le formulaire hébergé sur `help.snapchat.com`. Le préremplissage utilise `evaluateJavascript` et les identifiants HTML des champs, avec des tentatives différées si les champs ne sont pas encore disponibles.
 - `app/src/main/AndroidManifest.xml` déclare l’activité de lancement et la permission Internet. Les fichiers Gradle à la racine et dans `app/` définissent la compilation ; le wrapper se trouve dans `gradle/wrapper/`.
 
@@ -38,7 +38,7 @@ Fonctionnalités présentes dans le code, dont le fonctionnement sur appareil re
 - Android Gradle Plugin 8.7.3 et Gradle 8.9 ; `compileSdk 35`, `targetSdk 34`, `minSdk 26` (Android 8.0 minimum).
 - Migration des profils existants : le champ JSON `email` remplace `contactEmail` et `accountEmail`, avec priorité à l’ancien e-mail de contact puis repli sur celui du compte. La même adresse alimente les deux identifiants HTML e-mail déjà ciblés, si présents.
 - Le champ JSON `descriptionEnabled` mémorise l’activation de la description ; pour les anciens profils, une description non vide est activée par défaut. Le texte est conservé quand l’option est décochée, mais n’est pas injecté dans le formulaire.
-- Nom de l’application : `Streak keeper` (libellé Android, accueil et projet Gradle). L’identifiant/package `fr.streakpresets.app` et la clé `streak_presets_v1` sont conservés pour la compatibilité des mises à jour et des données. Le dépôt GitHub garde son nom actuel.
+- Nom de l’application : `Streak keeper` (libellé Android, accueil et projet Gradle). Les sources sont dans `fr/streakkeeper/app` et le manifeste référence explicitement `fr.streakkeeper.app.MainActivity`. L’identifiant d’installation historique est conservé ; le nom du fichier de préférences est fixé explicitement afin que le changement de package ne perde pas les profils. L’URL du dépôt GitHub reste inchangée.
 - Version déclarée : `0.1.0`, code de version `1`.
 - Stockage local privé, sans chiffrement supplémentaire des e-mails et téléphones ; sauvegarde Android désactivée dans le manifeste. Aucun mot de passe Snapchat n’est demandé.
 - JavaScript, stockage DOM et cookies, y compris tiers, activés pour le formulaire. Accès WebView aux fichiers et contenus locaux désactivé, contenu mixte et trafic HTTP en clair interdits.
@@ -46,7 +46,8 @@ Fonctionnalités présentes dans le code, dont le fonctionnement sur appareil re
 
 ## Problèmes connus et limites
 
-- Validation du thème clair le 28 octobre 2026 : `./gradlew assembleDebug lintDebug --offline` réussit. APK debug vérifié (intégrité ZIP et signature). Contrastes calculés : texte principal 15,11:1, texte secondaire sur fond 5,01:1, bouton principal 6,29:1. Waydroid est arrêté ; le rendu, le formulaire distant et les gestes restent à tester sur appareil.
+- Validation du renommage Java le 28 octobre 2026 : `./gradlew assembleDebug lintDebug --offline` réussit. APK vérifié (intégrité ZIP, signature, classes Java et activité de lancement renommées, identifiant Android historique conservé). La mise à jour sur Waydroid et la migration des données restent à tester.
+- Contrastes du thème clair déjà calculés : texte principal 15,11:1, texte secondaire sur fond 5,01:1, bouton principal 6,29:1.
 - Le fonctionnement sur appareil et le préremplissage réel du formulaire n’ont pas été testés lors de cette modification.
 - Lint termine sans erreur, avec 17 avertissements : API cible ancienne, activation de JavaScript, règles d’extraction des données, icône absente, chaînes d’interface écrites directement en Java et alignements à gauche explicites (tiroir demandé à gauche).
 - Aucun test automatisé n’est présent dans les sources examinées.
@@ -59,7 +60,7 @@ Fonctionnalités présentes dans le code, dont le fonctionnement sur appareil re
 ## Prochaines étapes
 
 1. Tester le thème clair et le menu sur Waydroid selon les listes du README : accueil, guide au clic, dialogues, saisie, gestes, sélection persistante, liste longue, grands caractères, rotation et formulaire officiel. Attendre le retour de l’utilisateur avant de proposer une fusion dans `main`.
-2. Tester sur émulateur ou appareil les opérations sur les profils et amis, la copie sans doublons, la persistance après redémarrage et la navigation. Vérifier aussi la migration des anciens e-mails et descriptions, ainsi que le masquage et la désactivation du préremplissage de la description via la case à cocher.
+2. Tester la mise à jour de l’ancienne APK vers la nouvelle sur Waydroid sans désinstallation : profils, amis et profil actif conservés, puis redémarrage après sauvegarde pour vérifier la migration de clé. Tester sur émulateur ou appareil les opérations sur les profils et amis, la copie sans doublons, la persistance après redémarrage et la navigation. Vérifier aussi la migration des anciens e-mails et descriptions, ainsi que le masquage et la désactivation du préremplissage de la description via la case à cocher.
 3. Vérifier le chargement du formulaire, le préremplissage, le bouton « Re-remplir » et les erreurs réseau, sans envoyer de véritable demande lors du premier test, conformément au README.
 4. Corriger les problèmes constatés et ajouter les vérifications adaptées aux changements ; actualiser le statut de validation dans la documentation.
 

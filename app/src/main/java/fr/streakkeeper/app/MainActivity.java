@@ -1,8 +1,9 @@
-package fr.streakpresets.app;
+package fr.streakkeeper.app;
 
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.graphics.Color;
+import android.content.SharedPreferences;
 import android.graphics.Paint;
 import android.net.Uri;
 import android.text.TextUtils;
@@ -43,7 +44,10 @@ import java.util.UUID;
 public class MainActivity extends Activity {
     private static final String FORM_URL =
             "https://help.snapchat.com/hc/fr-fr/requests/new?co=true&ticket_form_id=149423";
-    private static final String STORAGE_KEY = "streak_presets_v1";
+    private static final String STORAGE_KEY = "streak_keeper_v1";
+    private static final String LEGACY_STORAGE_KEY = "streak_presets_v1";
+    // getPreferences() used this file before the Java package was renamed.
+    private static final String PREFERENCES_FILE = "MainActivity";
 
     private AppTheme ui;
     private TextView browserContext;
@@ -637,7 +641,9 @@ public class MainActivity extends Activity {
     }
 
     private void restoreData() {
-        String raw = getPreferences(MODE_PRIVATE).getString(STORAGE_KEY, "");
+        SharedPreferences preferences = getSharedPreferences(PREFERENCES_FILE, MODE_PRIVATE);
+        String raw = preferences.getString(STORAGE_KEY, null);
+        if (raw == null) raw = preferences.getString(LEGACY_STORAGE_KEY, "");
         if (raw.isEmpty()) return;
         try {
             JSONObject data = new JSONObject(raw);
@@ -660,7 +666,8 @@ public class MainActivity extends Activity {
             for (Profile p : profiles) items.put(p.json());
             JSONObject data = new JSONObject().put("profiles", items)
                     .put("activeId", active == null ? "" : active.id);
-            getPreferences(MODE_PRIVATE).edit().putString(STORAGE_KEY, data.toString()).apply();
+            getSharedPreferences(PREFERENCES_FILE, MODE_PRIVATE).edit()
+                    .putString(STORAGE_KEY, data.toString()).remove(LEGACY_STORAGE_KEY).apply();
         } catch (JSONException e) {
             Toast.makeText(this, "Impossible d’enregistrer les presets.", Toast.LENGTH_LONG).show();
         }

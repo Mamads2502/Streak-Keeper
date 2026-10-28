@@ -3,10 +3,11 @@ plugins {
 }
 
 android {
-    namespace 'fr.streakpresets.app'
+    namespace 'fr.streakkeeper.app'
     compileSdk 35
 
     defaultConfig {
+        // Keep the installed app identity so updates retain existing user data.
         applicationId 'fr.streakpresets.app'
         minSdk 26
         targetSdk 34

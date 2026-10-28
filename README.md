@@ -73,11 +73,11 @@ Guide officiel : [Installer Android Studio sur Linux](https://developer.android.
 
 ## 2. Récupérer le projet
 
-Le dépôt GitHub conserve son nom `StreakPresets`. Si SSH fonctionne :
+L’URL du dépôt GitHub reste inchangée ; la commande ci-dessous utilise le dossier local `StreakKeeper`. Si SSH fonctionne :
 
 ```bash
-git clone git@github.com:Mamads2502/StreakPresets.git
-cd StreakPresets
+git clone git@github.com:Mamads2502/StreakPresets.git StreakKeeper
+cd StreakKeeper
 ```
 
 **Si tu as déjà le dossier local**, inutile de refaire le `git clone`. Ouvre simplement le dossier contenant `settings.gradle`, `gradlew` et `app/`.
@@ -192,11 +192,13 @@ Une fois l'APK créé, tu peux aussi le transférer sur le téléphone et l'ouvr
 ```text
 app/build.gradle                       # Configuration Android du module
 app/src/main/AndroidManifest.xml       # Déclaration de l'application
-app/src/main/java/fr/streakpresets/app/
+app/src/main/java/fr/streakkeeper/app/
     MainActivity.java                  # Interface, presets, contacts et WebView
 gradlew                                # Compilation via Gradle sous Linux
 gradle/wrapper/                        # Version du wrapper Gradle
 ```
+
+Les sources utilisent le package et le namespace `fr.streakkeeper.app`. L’identifiant Android installé reste `fr.streakpresets.app` pour conserver la compatibilité des mises à jour. Le fichier de préférences historique `MainActivity` est ouvert explicitement ; les anciennes données sont lues puis migrées vers la clé `streak_keeper_v1` lors de la prochaine sauvegarde.
 
 ## 9. À propos du formulaire
 
