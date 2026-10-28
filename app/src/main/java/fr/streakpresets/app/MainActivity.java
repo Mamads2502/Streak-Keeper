@@ -498,8 +498,8 @@ public class MainActivity extends Activity {
         if (active == null) return;
         LinearLayout fields = vertical();
         fields.setPadding(dp(18), dp(8), dp(18), dp(8));
-        EditText alias = input(fields, "Nom à afficher", "");
         EditText username = input(fields, "Pseudo Snapchat de l’ami", "");
+        EditText alias = input(fields, "Nom à afficher", "");
         ScrollView scroll = new ScrollView(this);
         scroll.addView(fields);
         showDialog(new AlertDialog.Builder(this).setTitle("Ajouter un ami").setView(scroll)
