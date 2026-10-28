@@ -14,6 +14,7 @@ import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.Button;
+import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.FrameLayout;
 import android.widget.HorizontalScrollView;
@@ -64,10 +65,10 @@ public class MainActivity extends Activity {
         String id = UUID.randomUUID().toString();
         String name = "";
         String username = "";
-        String contactEmail = "";
-        String accountEmail = "";
+        String email = "";
         String phone = "";
         String description = "";
+        boolean descriptionEnabled = false;
         final List<Friend> friends = new ArrayList<>();
 
         JSONObject json() throws JSONException {
@@ -75,8 +76,9 @@ public class MainActivity extends Activity {
             for (Friend f : friends) friendJson.put(f.json());
             return new JSONObject()
                     .put("id", id).put("name", name).put("username", username)
-                    .put("contactEmail", contactEmail).put("accountEmail", accountEmail)
+                    .put("email", email)
                     .put("phone", phone).put("description", description)
+                    .put("descriptionEnabled", descriptionEnabled)
                     .put("friends", friendJson);
         }
 
@@ -85,10 +87,13 @@ public class MainActivity extends Activity {
             p.id = data.optString("id", p.id);
             p.name = data.optString("name");
             p.username = data.optString("username");
-            p.contactEmail = data.optString("contactEmail");
-            p.accountEmail = data.optString("accountEmail");
+            p.email = data.optString("email");
+            // Migrate existing presets, preferring the former contact address.
+            if (p.email.trim().isEmpty()) p.email = data.optString("contactEmail");
+            if (p.email.trim().isEmpty()) p.email = data.optString("accountEmail");
             p.phone = data.optString("phone");
             p.description = data.optString("description");
+            p.descriptionEnabled = data.optBoolean("descriptionEnabled", !p.description.isEmpty());
             JSONArray friends = data.optJSONArray("friends");
             if (friends != null) for (int i = 0; i < friends.length(); i++) {
                 JSONObject item = friends.optJSONObject(i);
@@ -200,7 +205,7 @@ public class MainActivity extends Activity {
 
         gap(page, 12);
         page.addView(text("Profil actif : " + active.name, 18, true));
-        page.addView(text("@" + active.username + " · " + active.contactEmail, 13, false));
+        page.addView(text("@" + active.username + " · " + active.email, 13, false));
         LinearLayout edits = horizontal();
         edits.addView(button("Modifier", () -> editProfile(active)), new LinearLayout.LayoutParams(0, dp(48), 1));
         edits.addView(button("Supprimer", this::confirmDeleteProfile), new LinearLayout.LayoutParams(0, dp(48), 1));
@@ -244,12 +249,20 @@ public class MainActivity extends Activity {
         Profile candidate = adding ? new Profile() : current;
         LinearLayout fields = vertical();
         fields.setPadding(dp(18), dp(8), dp(18), dp(8));
-        EditText name = input(fields, "Nom du preset (ex : Mayess)", candidate.name);
+        EditText name = input(fields, "Nom du preset", candidate.name);
         EditText username = input(fields, "Pseudo Snapchat", candidate.username);
-        EditText contactEmail = input(fields, "E-mail de contact", candidate.contactEmail);
-        EditText accountEmail = input(fields, "E-mail lié au compte Snapchat", candidate.accountEmail);
+        EditText email = input(fields, "E-mail", candidate.email);
+        email.setInputType(android.text.InputType.TYPE_CLASS_TEXT
+                | android.text.InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS);
         EditText phone = input(fields, "Téléphone avec indicatif (ex : +33...)", candidate.phone);
+        CheckBox descriptionEnabled = new CheckBox(this);
+        descriptionEnabled.setText("Ajouter une description à la demande");
+        descriptionEnabled.setChecked(candidate.descriptionEnabled);
+        fields.addView(descriptionEnabled);
         EditText description = input(fields, "Description de la demande (facultatif)", candidate.description);
+        description.setVisibility(descriptionEnabled.isChecked() ? View.VISIBLE : View.GONE);
+        descriptionEnabled.setOnCheckedChangeListener((buttonView, checked) ->
+                description.setVisibility(checked ? View.VISIBLE : View.GONE));
         ScrollView scroll = new ScrollView(this);
         scroll.addView(fields);
         new AlertDialog.Builder(this)
@@ -257,17 +270,16 @@ public class MainActivity extends Activity {
                 .setView(scroll)
                 .setNegativeButton("Annuler", null)
                 .setPositiveButton("Enregistrer", (dialog, which) -> {
-                    if (blank(name) || blank(username) || blank(contactEmail)
-                            || blank(accountEmail) || blank(phone)) {
+                    if (blank(name) || blank(username) || blank(email) || blank(phone)) {
                         Toast.makeText(this, "Tous les champs sauf la description sont nécessaires.", Toast.LENGTH_LONG).show();
                         return;
                     }
                     candidate.name = value(name);
                     candidate.username = value(username);
-                    candidate.contactEmail = value(contactEmail);
-                    candidate.accountEmail = value(accountEmail);
+                    candidate.email = value(email);
                     candidate.phone = value(phone);
                     candidate.description = value(description);
+                    candidate.descriptionEnabled = descriptionEnabled.isChecked();
                     if (adding) profiles.add(candidate);
                     active = candidate;
                     persist();
@@ -369,12 +381,12 @@ public class MainActivity extends Activity {
         Profile p = pendingProfile;
         StringBuilder js = new StringBuilder("(function(){")
                 .append("const fields=[")
-                .append(field("request_anonymous_requester_email", p.contactEmail)).append(",")
+                .append(field("request_anonymous_requester_email", p.email)).append(",")
                 .append(field("request_custom_fields_24281229", p.username)).append(",")
-                .append(field("request_custom_fields_24335325", p.accountEmail)).append(",")
+                .append(field("request_custom_fields_24335325", p.email)).append(",")
                 .append(field("request_custom_fields_24369716", p.phone)).append(",")
                 .append(field("request_custom_fields_24369736", pendingFriend.username));
-        if (!p.description.isEmpty()) {
+        if (p.descriptionEnabled && !p.description.isEmpty()) {
             js.append(",").append(field("request_description", p.description));
         }
         js.append("];let filled=0,missing=[];")

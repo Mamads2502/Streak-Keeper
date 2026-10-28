@@ -1,6 +1,7 @@
 # Instructions permanentes
 
 - Répondre en français.
+- À la fin de chaque modification, proposer un message de commit résumant le travail effectué. L’utilisateur se charge du commit et du push ; ne pas les exécuter sans demande explicite.
 - Avant les travaux importants, consulter `ETAT_DU_PROJET.md`, puis les sources concernées et le `README.md` si nécessaire.
 - Respecter l’architecture existante et les conventions du projet. Ne pas introduire de refonte, de nouvelle couche ou de dépendance sans nécessité liée à la demande.
 - Vérifier les modifications avec des contrôles adaptés à leur portée : relecture et contrôle du diff pour la documentation ; compilation et tests pertinents pour le code. Indiquer les vérifications effectuées et celles qui n’ont pas pu l’être, sans présenter un comportement non testé comme validé.

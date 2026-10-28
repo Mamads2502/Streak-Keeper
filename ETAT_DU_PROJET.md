@@ -18,7 +18,7 @@ Application Android expérimentale et non officielle permettant de gérer plusie
 
 Fonctionnalités présentes dans le code, dont le fonctionnement sur appareil reste à valider :
 
-- Création, sélection, modification et suppression de profils : nom du preset, pseudo, e-mail de contact, e-mail du compte, téléphone et description facultative.
+- Création, sélection, modification et suppression de profils : nom du preset sans exemple nominatif, pseudo, e-mail unique, téléphone et description facultative. Une case à cocher affiche ou masque la description ; son état est enregistré et contrôle le préremplissage.
 - Liste d’amis propre à chaque profil : ajout et suppression avec confirmation ; utilisation du pseudo comme nom affiché si aucun nom n’est saisi.
 - Copie de tous les amis d’un autre profil, sans doublons de pseudo (comparaison insensible à la casse, également utilisée lors de l’ajout).
 - Sauvegarde locale et restauration du profil actif au démarrage.
@@ -29,6 +29,8 @@ Fonctionnalités présentes dans le code, dont le fonctionnement sur appareil re
 
 - Android natif en Java 17, avec les composants du framework Android ; aucune dépendance applicative externe déclarée.
 - Android Gradle Plugin 8.7.3 et Gradle 8.9 ; `compileSdk 35`, `targetSdk 34`, `minSdk 26` (Android 8.0 minimum).
+- Migration des profils existants : le champ JSON `email` remplace `contactEmail` et `accountEmail`, avec priorité à l’ancien e-mail de contact puis repli sur celui du compte. La même adresse alimente les deux identifiants HTML e-mail déjà ciblés, si présents.
+- Le champ JSON `descriptionEnabled` mémorise l’activation de la description ; pour les anciens profils, une description non vide est activée par défaut. Le texte est conservé quand l’option est décochée, mais n’est pas injecté dans le formulaire.
 - Version déclarée : `0.1.0`, code de version `1`.
 - Stockage local privé, sans chiffrement supplémentaire des e-mails et téléphones ; sauvegarde Android désactivée dans le manifeste. Aucun mot de passe Snapchat n’est demandé.
 - JavaScript, stockage DOM et cookies, y compris tiers, activés pour le formulaire. Accès WebView aux fichiers et contenus locaux désactivé, contenu mixte et trafic HTTP en clair interdits.
@@ -36,8 +38,9 @@ Fonctionnalités présentes dans le code, dont le fonctionnement sur appareil re
 
 ## Problèmes connus et limites
 
-- Le README décrit un prototype non compilé et non testé sur appareil dans son environnement de rédaction, faute de SDK Android. Cette mention est historique : la disponibilité actuelle du SDK et la réussite d’une compilation restent à vérifier. Aucun nouveau résultat de compilation ou de test sur appareil n’a été établi lors de cette mise à jour documentaire.
-- Un APK local existe dans `app/build/outputs/apk/debug/app-debug.apk`, accompagné de `output-metadata.json`. Sa présence nuance le README, mais ne prouve pas qu’il correspond aux sources actuelles ni qu’il a été testé ; sa validation reste à effectuer.
+- Vérification du 28 octobre 2026 : `./gradlew assembleDebug lintDebug` réussit. APK debug généré dans `app/build/outputs/apk/debug/app-debug.apk`. La première tentative hors ligne ne disposait pas des dépendances lint ; la relance avec téléchargement a réussi.
+- Le fonctionnement sur appareil et le préremplissage réel du formulaire n’ont pas été testés lors de cette modification.
+- Lint termine sans erreur, avec 13 avertissements : API cible ancienne, activation de JavaScript, règles d’extraction des données, icône absente et chaînes d’interface écrites directement en Java.
 - Aucun test automatisé n’est présent dans les sources examinées.
 - Le préremplissage dépend des identifiants HTML du site et de son chargement dynamique. Le README indique des identifiants observés le 27 octobre 2026 ; leur validité actuelle n’a pas été vérifiée.
 - Le site peut bloquer les WebViews ou modifier son formulaire. La conservation des cookies ne garantit pas l’absence de CAPTCHA.
@@ -47,8 +50,8 @@ Fonctionnalités présentes dans le code, dont le fonctionnement sur appareil re
 
 ## Prochaines étapes
 
-1. Vérifier l’environnement Java 17 / SDK Android 35 et exécuter `./gradlew assembleDebug` ; consigner le résultat réel et les éventuels blocages.
-2. Tester sur émulateur ou appareil les opérations sur les profils et amis, la copie sans doublons, la persistance après redémarrage et la navigation.
+1. Installer l’APK debug généré sur un émulateur ou un appareil Android pour la validation fonctionnelle.
+2. Tester sur émulateur ou appareil les opérations sur les profils et amis, la copie sans doublons, la persistance après redémarrage et la navigation. Vérifier aussi la migration des anciens e-mails et descriptions, ainsi que le masquage et la désactivation du préremplissage de la description via la case à cocher.
 3. Vérifier le chargement du formulaire, le préremplissage, le bouton « Re-remplir » et les erreurs réseau, sans envoyer de véritable demande lors du premier test, conformément au README.
 4. Corriger les problèmes constatés et ajouter les vérifications adaptées aux changements ; actualiser le statut de validation dans la documentation.
 

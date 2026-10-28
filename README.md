@@ -4,14 +4,16 @@ Application Android **non officielle**, développée en Java natif pour gérer d
 
 ## Ce qui est implémenté
 
-- Plusieurs presets : pseudo, e-mail de contact, e-mail du compte, téléphone, description facultative.
+- Plusieurs presets : pseudo, e-mail unique, téléphone et description facultative activable par une case à cocher.
 - Listes d'amis séparées pour chaque profil.
 - Ajout, suppression, importation de tous les amis d'un autre profil sans doublons.
 - Données conservées **localement** dans les préférences privées de l'application.
 - Un seul ami à la fois : chargement du formulaire officiel, tentative de préremplissage de ses champs HTML, puis affichage de la vraie page pour la vérification et l'envoi **manuels**.
 - Conservation ordinaire des cookies du WebView. Le reCAPTCHA reste sous le contrôle du site.
 
-> **État actuel : prototype non testé sur un appareil Android.** Le code source est disponible, mais aucun APK compilé et vérifié n'est encore fourni. Le préremplissage dépend du site Snapchat, qui peut changer ou bloquer les navigateurs intégrés.
+> **État actuel : prototype non testé sur un appareil Android.** La compilation debug et l’analyse lint ont réussi le 28 octobre 2026 ; l’APK local est disponible dans `app/build/outputs/apk/debug/app-debug.apk`. Le préremplissage dépend du site Snapchat, qui peut changer ou bloquer les navigateurs intégrés.
+
+Les anciens profils reprennent leur e-mail de contact (ou celui du compte si le premier est vide). L’adresse unique sert au préremplissage des champs e-mail connus du formulaire. Les descriptions existantes restent activées ; décocher leur option conserve le texte mais désactive son préremplissage.
 
 ## Prérequis
 
@@ -105,7 +107,7 @@ L'émulateur peut être gourmand en mémoire et nécessite une virtualisation co
 
 ## 5. Installer sur un vrai téléphone Android — après compilation réussie
 
-**Il n'y a pas encore d'APK précompilé vérifié.** Cette section est utilisable uniquement après une compilation `assembleDebug` réussie.
+**L’APK debug a été compilé, mais reste à tester sur appareil.** Pour installer une version correspondant à tes sources, utilise le résultat d’une compilation `assembleDebug` réussie.
 
 ### Méthode recommandée : Android Studio
 
@@ -135,7 +137,7 @@ Une fois l'APK créé, tu peux aussi le transférer sur le téléphone et l'ouvr
 
 ## 6. Premier test de l'application
 
-1. Ajouter un preset avec le pseudo Snapchat, les e-mails et le téléphone.
+1. Ajouter un preset avec le pseudo Snapchat, l’e-mail et le téléphone. Pour saisir une description, cocher « Ajouter une description à la demande ».
 2. Ajouter un ami avec son nom affiché et son pseudo Snapchat.
 3. Cliquer sur **Préparer** à côté de cet ami.
 4. Attendre l'ouverture du formulaire dans le `WebView`.
@@ -184,7 +186,7 @@ Snapchat peut bloquer le formulaire dans les WebViews, modifier ses champs ou re
 - Importation de tous les amis (pas de sous-sélection lors de l'import).
 - Pas de récupération automatique de photo de profil ou de contacts depuis Snapchat.
 - Pas de soumission automatique, d'envoi groupé ni de contournement reCAPTCHA.
-- Le code source a été préparé ici, mais **n'a pas pu être compilé ni testé sur un appareil Android** dans cet environnement (SDK Android non installé).
+- La compilation et l’analyse lint réussissent, mais **le fonctionnement sur appareil Android reste à valider**.
 
 ## 11. Confidentialité
 
