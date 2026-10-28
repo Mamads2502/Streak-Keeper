@@ -38,7 +38,7 @@ import java.util.UUID;
 
 /**
  * Unofficial personal experiment. Never submits Snapchat forms in the background.
- * The user sees the official page and submits it manually.
+ * The user sees the official page and submits it manually, may change.
  */
 public class MainActivity extends Activity {
     private static final String FORM_URL =
