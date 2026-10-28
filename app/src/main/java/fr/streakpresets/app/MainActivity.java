@@ -22,6 +22,7 @@ import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
+import android.widget.PopupMenu;
 import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -223,10 +224,6 @@ public class MainActivity extends Activity {
         gap(page, 12);
         page.addView(text("Profil actif : " + active.name, 18, true));
         page.addView(text("@" + active.username + " · " + active.email, 13, false));
-        LinearLayout edits = horizontal();
-        edits.addView(button("Modifier", () -> editProfile(active)), new LinearLayout.LayoutParams(0, dp(48), 1));
-        edits.addView(button("Supprimer", this::confirmDeleteProfile), new LinearLayout.LayoutParams(0, dp(48), 1));
-        page.addView(edits);
 
         gap(page, 18);
         page.addView(text("Amis de " + active.name + " (" + active.friends.size() + ")", 19, true));
@@ -331,8 +328,32 @@ public class MainActivity extends Activity {
             LinearLayout.LayoutParams row = new LinearLayout.LayoutParams(-1, -2);
             row.bottomMargin = dp(8);
             choice.setMinHeight(dp(68));
-            drawerProfiles.addView(choice, row);
+            LinearLayout profileRow = horizontal();
+            profileRow.addView(choice, new LinearLayout.LayoutParams(0, -2, 1));
+            Button options = new Button(this);
+            options.setText("⋮");
+            options.setTextSize(24);
+            options.setContentDescription("Options du profil " + profile.name + ", @" + profile.username);
+            options.setTooltipText("Options du profil");
+            styleDrawerButton(options, false);
+            options.setPadding(0, 0, 0, 0);
+            options.setOnClickListener(anchor -> showProfileOptions(anchor, profile));
+            profileRow.addView(options, new LinearLayout.LayoutParams(dp(48), dp(48)));
+            drawerProfiles.addView(profileRow, row);
         }
+    }
+
+    private void showProfileOptions(View anchor, Profile profile) {
+        PopupMenu menu = new PopupMenu(this, anchor);
+        menu.getMenu().add("Modifier").setOnMenuItemClickListener(item -> {
+            editProfile(profile);
+            return true;
+        });
+        menu.getMenu().add("Supprimer…").setOnMenuItemClickListener(item -> {
+            confirmDeleteProfile(profile);
+            return true;
+        });
+        menu.show();
     }
 
     private void styleDrawerButton(Button button, boolean highlighted) {
@@ -389,8 +410,10 @@ public class MainActivity extends Activity {
                     candidate.phone = value(phone);
                     candidate.description = value(description);
                     candidate.descriptionEnabled = descriptionEnabled.isChecked();
-                    if (adding) profiles.add(candidate);
-                    active = candidate;
+                    if (adding) {
+                        profiles.add(candidate);
+                        active = candidate;
+                    }
                     persist();
                     renderHome();
                 }).show();
@@ -457,15 +480,13 @@ public class MainActivity extends Activity {
                 }).show();
     }
 
-    private void confirmDeleteProfile() {
-        if (active == null) return;
-        Profile toDelete = active;
-        new AlertDialog.Builder(this).setTitle("Supprimer le preset " + toDelete.name + " ?")
-                .setMessage("Cela supprimera aussi sa liste locale d’amis.")
+    private void confirmDeleteProfile(Profile toDelete) {
+        new AlertDialog.Builder(this).setTitle("Supprimer le profil " + toDelete.name + " ?")
+                .setMessage("@" + toDelete.username + "\nCela supprimera aussi sa liste locale d’amis. Cette action est définitive.")
                 .setNegativeButton("Annuler", null)
                 .setPositiveButton("Supprimer", (dialog, which) -> {
                     profiles.remove(toDelete);
-                    active = profiles.isEmpty() ? null : profiles.get(0);
+                    if (active == toDelete) active = profiles.isEmpty() ? null : profiles.get(0);
                     persist();
                     renderHome();
                 }).show();

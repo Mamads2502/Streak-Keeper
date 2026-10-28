@@ -20,6 +20,7 @@ Fonctionnalités présentes dans le code, dont le fonctionnement sur appareil re
 
 - Création, sélection, modification et suppression de profils : nom du preset sans exemple nominatif, pseudo, e-mail unique, téléphone et description facultative. Une case à cocher affiche ou masque la description ; son état est enregistré et contrôle le préremplissage.
 - Menu latéral gauche animé : barre supérieure fixe avec ☰, ouverture par balayage depuis le bord gauche, profils défilants avec sélection active et ajout fixé en bas. Fermeture par balayage à gauche, toucher extérieur, × ou Retour Android. La sélection et la création conservent leur persistance existante.
+- Actions de profil regroupées dans le bouton ⋮ de chaque ligne du tiroir : modification et suppression avec confirmation nominative. Aucun bouton de gestion sur l’accueil ; modifier ou supprimer un profil inactif conserve le profil actif. Créer un profil le sélectionne ; supprimer le profil actif sélectionne le premier restant, ou aucun si la liste est vide.
 - Liste d’amis propre à chaque profil : ajout et suppression avec confirmation ; utilisation du pseudo comme nom affiché si aucun nom n’est saisi.
 - Copie de tous les amis d’un autre profil, sans doublons de pseudo (comparaison insensible à la casse, également utilisée lors de l’ajout).
 - Sauvegarde locale et restauration du profil actif au démarrage.
@@ -41,7 +42,7 @@ Fonctionnalités présentes dans le code, dont le fonctionnement sur appareil re
 
 ## Problèmes connus et limites
 
-- Validation du menu latéral le 28 octobre 2026 : `./gradlew assembleDebug lintDebug --offline` réussit. APK généré dans `app/build/outputs/apk/debug/app-debug.apk`, intégrité ZIP et signature (`apksigner verify`) vérifiées. Les gestes et le rendu restent à tester sur Waydroid.
+- Validation du menu latéral et des options ⋮ par profil le 28 octobre 2026 : `./gradlew assembleDebug lintDebug --offline` réussit. APK généré dans `app/build/outputs/apk/debug/app-debug.apk`, intégrité ZIP et signature (`apksigner verify`) vérifiées. Les gestes et le rendu restent à tester sur Waydroid.
 - Le fonctionnement sur appareil et le préremplissage réel du formulaire n’ont pas été testés lors de cette modification.
 - Lint termine sans erreur, avec 16 avertissements : API cible ancienne, activation de JavaScript, règles d’extraction des données, icône absente, chaînes d’interface écrites directement en Java et alignements à gauche explicites (tiroir demandé à gauche).
 - Aucun test automatisé n’est présent dans les sources examinées.

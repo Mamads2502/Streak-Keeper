@@ -5,6 +5,7 @@ Application Android **non officielle**, développée en Java natif pour gérer d
 ## Ce qui est implémenté
 
 - Menu latéral gauche : ouverture via ☰ ou balayage depuis le bord gauche, sélection du profil actif et bouton « Ajouter un profil » fixé en bas. Fermeture par balayage à gauche, toucher extérieur, × ou Retour Android.
+- Chaque profil du menu possède un bouton ⋮ : « Modifier » ou « Supprimer… ». La suppression exige une confirmation ; gérer un autre profil ne change pas le profil actif.
 - Plusieurs presets : pseudo, e-mail unique, téléphone et description facultative activable par une case à cocher.
 - Listes d'amis séparées pour chaque profil.
 - Ajout, suppression, importation de tous les amis d'un autre profil sans doublons.
@@ -152,7 +153,7 @@ Une fois l'APK créé, tu peux aussi le transférer sur le téléphone et l'ouvr
 - Ouvrir via ☰ puis depuis le bord gauche ; fermer par balayage à gauche, toucher extérieur, × et Retour Android.
 - Créer un premier profil, puis un second. Passer de l’un à l’autre : vérifier la coche du profil actif, sa liste d’amis et sa sélection après redémarrage.
 - Avec plusieurs profils, faire défiler la liste et vérifier que « Ajouter un profil » reste en bas. Vérifier aussi les noms longs, le mode paysage et une taille de police agrandie.
-- Modifier ou supprimer le profil actif, puis rouvrir le menu pour vérifier son actualisation ; tester également la suppression du dernier profil et l’annulation d’une création.
+- Via ⋮, modifier ou supprimer un profil actif puis inactif : vérifier le profil ciblé, l’actualisation du menu et la conservation de la sélection pour un profil inactif. Annuler une modification et une suppression pour vérifier qu’aucune donnée ne change. Tester aussi la suppression du dernier profil et l’annulation d’une création.
 - Ouvrir « Préparer » puis revenir aux presets : le menu doit redevenir accessible. Il reste verrouillé pendant l’affichage du formulaire pour éviter un changement de profil en cours de préparation.
 
 ## 7. Dépannage rapide
