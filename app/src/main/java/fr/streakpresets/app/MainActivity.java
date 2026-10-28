@@ -176,7 +176,7 @@ public class MainActivity extends Activity {
     private void renderHome() {
         LinearLayout page = vertical();
         page.setPadding(dp(16), dp(20), dp(16), dp(28));
-        page.addView(text("🔥 Streak Presets", 25, true));
+        page.addView(text("🔥 Streak keeper", 25, true));
         page.addView(text("Tes profils et amis, sauvegardés sur ce téléphone.", 13, false));
         gap(page, 18);
 

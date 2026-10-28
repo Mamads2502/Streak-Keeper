@@ -1,4 +1,4 @@
-# État du projet — Streak Presets
+# État du projet — Streak keeper
 
 Dernière mise à jour : 28 octobre 2026.
 
@@ -31,6 +31,7 @@ Fonctionnalités présentes dans le code, dont le fonctionnement sur appareil re
 - Android Gradle Plugin 8.7.3 et Gradle 8.9 ; `compileSdk 35`, `targetSdk 34`, `minSdk 26` (Android 8.0 minimum).
 - Migration des profils existants : le champ JSON `email` remplace `contactEmail` et `accountEmail`, avec priorité à l’ancien e-mail de contact puis repli sur celui du compte. La même adresse alimente les deux identifiants HTML e-mail déjà ciblés, si présents.
 - Le champ JSON `descriptionEnabled` mémorise l’activation de la description ; pour les anciens profils, une description non vide est activée par défaut. Le texte est conservé quand l’option est décochée, mais n’est pas injecté dans le formulaire.
+- Nom de l’application : `Streak keeper` (libellé Android, accueil et projet Gradle). L’identifiant/package `fr.streakpresets.app` et la clé `streak_presets_v1` sont conservés pour la compatibilité des mises à jour et des données. Le dépôt GitHub garde son nom actuel.
 - Version déclarée : `0.1.0`, code de version `1`.
 - Stockage local privé, sans chiffrement supplémentaire des e-mails et téléphones ; sauvegarde Android désactivée dans le manifeste. Aucun mot de passe Snapchat n’est demandé.
 - JavaScript, stockage DOM et cookies, y compris tiers, activés pour le formulaire. Accès WebView aux fichiers et contenus locaux désactivé, contenu mixte et trafic HTTP en clair interdits.
@@ -38,7 +39,7 @@ Fonctionnalités présentes dans le code, dont le fonctionnement sur appareil re
 
 ## Problèmes connus et limites
 
-- Vérification du 28 octobre 2026 : `./gradlew assembleDebug lintDebug` réussit. APK debug généré dans `app/build/outputs/apk/debug/app-debug.apk`. La première tentative hors ligne ne disposait pas des dépendances lint ; la relance avec téléchargement a réussi.
+- Vérification du renommage le 28 octobre 2026 : `./gradlew assembleDebug lintDebug --offline` réussit. APK debug généré dans `app/build/outputs/apk/debug/app-debug.apk` ; signature vérifiée avec `apksigner` et libellé « Streak keeper » confirmé dans le manifeste compilé avec `aapt dump xmltree`.
 - Le fonctionnement sur appareil et le préremplissage réel du formulaire n’ont pas été testés lors de cette modification.
 - Lint termine sans erreur, avec 13 avertissements : API cible ancienne, activation de JavaScript, règles d’extraction des données, icône absente et chaînes d’interface écrites directement en Java.
 - Aucun test automatisé n’est présent dans les sources examinées.
@@ -50,7 +51,7 @@ Fonctionnalités présentes dans le code, dont le fonctionnement sur appareil re
 
 ## Prochaines étapes
 
-1. Installer l’APK debug généré sur un émulateur ou un appareil Android pour la validation fonctionnelle.
+1. Tester l’APK renommé sur Waydroid : vérifier le nom « Streak keeper » dans le lanceur et l’accueil, ainsi que la conservation des profils après mise à jour. Attendre le retour de l’utilisateur avant de proposer une fusion dans `main`.
 2. Tester sur émulateur ou appareil les opérations sur les profils et amis, la copie sans doublons, la persistance après redémarrage et la navigation. Vérifier aussi la migration des anciens e-mails et descriptions, ainsi que le masquage et la désactivation du préremplissage de la description via la case à cocher.
 3. Vérifier le chargement du formulaire, le préremplissage, le bouton « Re-remplir » et les erreurs réseau, sans envoyer de véritable demande lors du premier test, conformément au README.
 4. Corriger les problèmes constatés et ajouter les vérifications adaptées aux changements ; actualiser le statut de validation dans la documentation.

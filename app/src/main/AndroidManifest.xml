@@ -4,7 +4,7 @@
 
     <application
         android:allowBackup="false"
-        android:label="Streak Presets"
+        android:label="Streak keeper"
         android:usesCleartextTraffic="false"
         android:theme="@android:style/Theme.Material.Light.NoActionBar">
         <activity

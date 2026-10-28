@@ -1,4 +1,4 @@
-# Streak Presets 🔥 — application Android expérimentale
+# Streak keeper 🔥 — application Android expérimentale
 
 Application Android **non officielle**, développée en Java natif pour gérer des profils et des listes d'amis, puis préremplir le formulaire d'assistance Snapchat dans un WebView.
 
@@ -17,7 +17,7 @@ Les anciens profils reprennent leur e-mail de contact (ou celui du compte si le 
 
 ## Prérequis
 
-Streak Presets est une application **Android native en Java** : elle ne s'exécute pas directement comme une application de bureau Ubuntu. Sous Linux, on peut la compiler et la lancer dans un émulateur Android ou sur un vrai téléphone.
+Streak keeper est une application **Android native en Java** : elle ne s'exécute pas directement comme une application de bureau Ubuntu. Sous Linux, on peut la compiler et la lancer dans un émulateur Android ou sur un vrai téléphone.
 
 | Outil | Version / condition |
 |---|---|
@@ -61,7 +61,7 @@ Guide officiel : [Installer Android Studio sur Linux](https://developer.android.
 
 ## 2. Récupérer le projet
 
-Si ton dépôt est sur GitHub et que SSH fonctionne :
+Le dépôt GitHub conserve son nom `StreakPresets`. Si SSH fonctionne :
 
 ```bash
 git clone git@github.com:Mamads2502/StreakPresets.git
