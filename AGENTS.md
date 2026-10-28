@@ -8,3 +8,12 @@
 - Après chaque modification importante, mettre à jour `ETAT_DU_PROJET.md` pour refléter les fonctionnalités, l’architecture, les décisions techniques, les problèmes connus et les prochaines étapes. Conserver les informations utiles, supprimer ou corriger les éléments devenus obsolètes et éviter les doublons.
 
 Le `README.md` contient les instructions d’installation et d’utilisation ; `ETAT_DU_PROJET.md` décrit l’état technique courant et le travail restant.
+
+## Règles Git et validation
+
+- Pour chaque nouvelle fonctionnalité importante, vérifier l’état Git, puis créer et sélectionner une branche `feature/<nom-descriptif>`.
+- Travailler dans le dossier actuel, sans worktree.
+- Garder les corrections liées à une fonctionnalité sur sa branche.
+- Compiler et vérifier l’APK debug après les modifications importantes.
+- Attendre les tests de l’utilisateur sur Waydroid avant de proposer une fusion dans `main`.
+- Ne jamais effectuer de merge, de push ou de suppression de branche sans l’accord de l’utilisateur.
