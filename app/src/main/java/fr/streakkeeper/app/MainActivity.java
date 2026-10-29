@@ -306,16 +306,29 @@ public class MainActivity extends Activity {
         browser.setWebViewClient(new WebViewClient() {
             @Override public void onPageStarted(WebView view, String url, android.graphics.Bitmap favicon) {
                 formGeneration++;
+                if (ui.dark) {
+                    // Keep the unstyled first frame from flashing white before the theme CSS is ready.
+                    view.setVisibility(isSupportForm(url) ? View.INVISIBLE : View.VISIBLE);
+                }
             }
 
             @Override public void onPageFinished(WebView view, String url) {
                 if (isSupportForm(url)) {
-                    applyFormTheme();
-                    if (pendingProfile != null && !submissionObserved) {
-                        installSubmitObserver();
-                        if (automaticFill) fillForm(0);
-                        else finishFormPreparation();
-                    }
+                    int generation = formGeneration;
+                    if (ui.dark) view.setVisibility(View.INVISIBLE);
+                    applyFormTheme(() -> {
+                        if (generation != formGeneration) return;
+                        if (!isSupportForm(view.getUrl())) {
+                            if (ui.dark) view.setVisibility(View.VISIBLE);
+                            return;
+                        }
+                        if (ui.dark) view.setVisibility(View.VISIBLE);
+                        if (pendingProfile != null && !submissionObserved) {
+                            installSubmitObserver();
+                            if (automaticFill) fillForm(0);
+                            else finishFormPreparation();
+                        }
+                    });
                 } else if (pendingFriend != null && formInteractionLocked) {
                     cancelFormScroll();
                 }
@@ -324,6 +337,7 @@ public class MainActivity extends Activity {
             @Override public void onReceivedHttpError(WebView view, WebResourceRequest request,
                                                        android.webkit.WebResourceResponse response) {
                 if (request.isForMainFrame() && pendingFriend != null) {
+                    if (ui.dark) view.setVisibility(View.VISIBLE);
                     cancelFormScroll();
                     setBrowserStatus("Erreur du site. Vérifie si la demande a été reçue avant de réessayer.");
                 }
@@ -332,6 +346,7 @@ public class MainActivity extends Activity {
             @Override public void onReceivedError(WebView view, WebResourceRequest request,
                                                    WebResourceError error) {
                 if (request.isForMainFrame()) {
+                    if (ui.dark) view.setVisibility(View.VISIBLE);
                     cancelFormScroll();
                     setBrowserStatus("Chargement impossible. Vérifie Internet ou ouvre le site plus tard.");
                 }
@@ -2282,11 +2297,17 @@ public class MainActivity extends Activity {
                 && "/hc/fr-fr/requests/new".equals(uri.getPath());
     }
 
-    private void applyFormTheme() {
-        if (!isSupportForm(browser.getUrl())) return;
+    private void applyFormTheme() { applyFormTheme(null); }
+
+    private void applyFormTheme(Runnable onApplied) {
+        if (!isSupportForm(browser.getUrl())) {
+            if (onApplied != null) onApplied.run();
+            return;
+        }
         browser.evaluateJavascript("(function(){let s=document.getElementById('streak-keeper-theme');"
                 + "if(!s){s=document.createElement('style');s.id='streak-keeper-theme';document.head.appendChild(s);}"
-                + "s.textContent=" + JSONObject.quote(ui.formCss()) + ";})()", null);
+                + "s.textContent=" + JSONObject.quote(ui.formCss()) + ";})()",
+                ignored -> { if (onApplied != null) onApplied.run(); });
     }
 
     private TextView mutedText(String value, int size) {
