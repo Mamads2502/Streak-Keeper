@@ -251,11 +251,12 @@ public class MainActivity extends Activity {
         LinearLayout toolbar = horizontal();
         toolbar.setPadding(dp(8), dp(8), dp(16), dp(8));
         toolbar.setBackgroundColor(ui.surface);
-        menuButton = button("☰", () -> drawerLayout.openDrawer(drawerPanel));
+        menuButton = button("", () -> drawerLayout.openDrawer(drawerPanel));
         menuButton.setTextSize(24);
         menuButton.setContentDescription("Ouvrir le menu des profils");
         styleDrawerButton(menuButton, false);
         menuButton.setPadding(0, 0, 0, 0);
+        menuButton.setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_menu, 0, 0, 0);
         toolbar.addView(menuButton, new LinearLayout.LayoutParams(dp(48), dp(48)));
         TextView title = text("Streak keeper", 22, true);
         toolbar.addView(title, new LinearLayout.LayoutParams(0, -2, 1));
