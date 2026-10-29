@@ -5,16 +5,85 @@
     <application
         android:allowBackup="false"
         android:label="Streak keeper"
+        android:icon="@mipmap/ic_launcher_base"
         android:usesCleartextTraffic="false"
         android:theme="@style/Theme.StreakKeeper">
         <activity
             android:name="fr.streakkeeper.app.MainActivity"
             android:exported="true"
             android:windowSoftInputMode="adjustResize">
+        </activity>
+        <activity-alias
+            android:name="fr.streakkeeper.app.LauncherBase"
+            android:targetActivity="fr.streakkeeper.app.MainActivity"
+            android:icon="@mipmap/ic_launcher_base"
+            android:label="Streak keeper"
+            android:enabled="true"
+            android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-        </activity>
+        </activity-alias>
+        <activity-alias
+            android:name="fr.streakkeeper.app.LauncherOled"
+            android:targetActivity="fr.streakkeeper.app.MainActivity"
+            android:icon="@mipmap/ic_launcher_oled"
+            android:label="Streak keeper"
+            android:enabled="false"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+        <activity-alias
+            android:name="fr.streakkeeper.app.LauncherDark"
+            android:targetActivity="fr.streakkeeper.app.MainActivity"
+            android:icon="@mipmap/ic_launcher_dark"
+            android:label="Streak keeper"
+            android:enabled="false"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+        <activity-alias
+            android:name="fr.streakkeeper.app.LauncherIce"
+            android:targetActivity="fr.streakkeeper.app.MainActivity"
+            android:icon="@mipmap/ic_launcher_ice"
+            android:label="Streak keeper"
+            android:enabled="false"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+        <activity-alias
+            android:name="fr.streakkeeper.app.LauncherUltraviolet"
+            android:targetActivity="fr.streakkeeper.app.MainActivity"
+            android:icon="@mipmap/ic_launcher_ultraviolet"
+            android:label="Streak keeper"
+            android:enabled="false"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+        <activity-alias
+            android:name="fr.streakkeeper.app.LauncherLove"
+            android:targetActivity="fr.streakkeeper.app.MainActivity"
+            android:icon="@mipmap/ic_launcher_love"
+            android:label="Streak keeper"
+            android:enabled="false"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
     </application>
 </manifest>

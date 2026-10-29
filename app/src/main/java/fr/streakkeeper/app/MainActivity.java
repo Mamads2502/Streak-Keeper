@@ -57,6 +57,9 @@ public class MainActivity extends Activity {
     // getPreferences() used this file before the Java package was renamed.
     private static final String PREFERENCES_FILE = "MainActivity";
 
+    private static final String[] LAUNCHER_ALIASES = {"LauncherBase", "LauncherOled", "LauncherDark",
+            "LauncherIce", "LauncherUltraviolet", "LauncherLove"};
+    private static final String[] LAUNCHER_LABELS = {"Classique", "Nuit flamboyante", "Ombre", "Givré", "Ultraviolet", "Cœur en feu"};
     private static final String ACCENT_KEY = "accentColor";
     private static final String[] ACCENT_NAMES = {"Indigo", "Bleu", "Sarcelle", "Vert", "Framboise", "Prune", "Océan", "Ambre", "Rouge", "Ardoise"};
     private static final String[] ACCENT_IDS = {"indigo", "blue", "teal", "green", "rose", "plum", "ocean", "amber", "red", "slate"};
@@ -1554,6 +1557,7 @@ public class MainActivity extends Activity {
         LinearLayout appearance = settingsSection(page, "Apparence", "Choisis la couleur d’accentuation.");
         addThemeOptions(appearance);
         addAccentPalette(appearance);
+        addLauncherOptions(appearance);
         gap(page, 20);
         LinearLayout navigation = settingsSection(page, "Enchaînement", "Choisis comment passer d’un ami à l’autre.");
         addSetting(navigation, "Formulaire suivant automatique",
@@ -1606,6 +1610,59 @@ public class MainActivity extends Activity {
     private static int accentIndex(String id) {
         for (int i = 0; i < ACCENT_IDS.length; i++) if (ACCENT_IDS[i].equals(id)) return i;
         return 0;
+    }
+
+    private android.content.ComponentName launcherComponent(int index) {
+        return new android.content.ComponentName(this, "fr.streakkeeper.app." + LAUNCHER_ALIASES[index]);
+    }
+
+    private int selectedLauncher() {
+        android.content.pm.PackageManager manager = getPackageManager();
+        for (int i = 1; i < LAUNCHER_ALIASES.length; i++) {
+            if (manager.getComponentEnabledSetting(launcherComponent(i))
+                    == android.content.pm.PackageManager.COMPONENT_ENABLED_STATE_ENABLED) return i;
+        }
+        return 0;
+    }
+
+    private void addLauncherOptions(LinearLayout section) {
+        LinearLayout content = vertical();
+        content.setPadding(dp(16), dp(4), dp(16), dp(16));
+        content.addView(text("Icône de l’application", 15, true));
+        content.addView(mutedText("Choisis son apparence sur ton écran d’accueil.", 13));
+        gap(content, 8);
+        Button choice = button(LAUNCHER_LABELS[selectedLauncher()] + "  ▾", () -> {});
+        choice.setGravity(Gravity.CENTER_VERTICAL | Gravity.START);
+        choice.setContentDescription("Icône de l’application : " + LAUNCHER_LABELS[selectedLauncher()]);
+        content.addView(choice, new LinearLayout.LayoutParams(-1, -2));
+        choice.setOnClickListener(view -> {
+            PopupMenu menu = new PopupMenu(this, choice);
+            int current = selectedLauncher();
+            for (int i = 0; i < LAUNCHER_LABELS.length; i++) {
+                final int index = i;
+                android.view.MenuItem item = menu.getMenu().add(LAUNCHER_LABELS[i]);
+                item.setCheckable(true).setChecked(i == current);
+                item.setOnMenuItemClickListener(selected -> {
+                    if (index == current) return true;
+                    android.content.pm.PackageManager manager = getPackageManager();
+                    manager.setComponentEnabledSetting(launcherComponent(index),
+                            android.content.pm.PackageManager.COMPONENT_ENABLED_STATE_ENABLED,
+                            android.content.pm.PackageManager.DONT_KILL_APP);
+                    for (int j = 0; j < LAUNCHER_ALIASES.length; j++) {
+                        if (j != index) manager.setComponentEnabledSetting(launcherComponent(j),
+                                android.content.pm.PackageManager.COMPONENT_ENABLED_STATE_DISABLED,
+                                android.content.pm.PackageManager.DONT_KILL_APP);
+                    }
+                    choice.setText(LAUNCHER_LABELS[index] + "  ▾");
+                    choice.setContentDescription("Icône de l’application : " + LAUNCHER_LABELS[index]);
+                    Toast.makeText(this, "Icône choisie : " + LAUNCHER_LABELS[index], Toast.LENGTH_SHORT).show();
+                    return true;
+                });
+            }
+            menu.getMenu().setGroupCheckable(0, true, true);
+            menu.show();
+        });
+        section.addView(content);
     }
 
     private void addThemeOptions(LinearLayout section) {
