@@ -67,7 +67,16 @@ public class MainActivity extends Activity {
             R.style.Theme_StreakKeeper_Teal, R.style.Theme_StreakKeeper_Green,
             R.style.Theme_StreakKeeper_Rose, R.style.Theme_StreakKeeper_Plum, R.style.Theme_StreakKeeper_Ocean,
             R.style.Theme_StreakKeeper_Amber, R.style.Theme_StreakKeeper_Red, R.style.Theme_StreakKeeper_Slate};
+    private static final String THEME_KEY = "colorTheme";
+    private static final int[] DARK_THEMES = {R.style.Theme_StreakKeeper_DarkIndigo, R.style.Theme_StreakKeeper_DarkBlue, R.style.Theme_StreakKeeper_DarkTeal, R.style.Theme_StreakKeeper_DarkGreen, R.style.Theme_StreakKeeper_DarkRose, R.style.Theme_StreakKeeper_DarkPlum, R.style.Theme_StreakKeeper_DarkOcean, R.style.Theme_StreakKeeper_DarkAmber, R.style.Theme_StreakKeeper_DarkRed, R.style.Theme_StreakKeeper_DarkSlate};
+    private static final int[] OLED_THEMES = {R.style.Theme_StreakKeeper_OledIndigo, R.style.Theme_StreakKeeper_OledBlue, R.style.Theme_StreakKeeper_OledTeal, R.style.Theme_StreakKeeper_OledGreen, R.style.Theme_StreakKeeper_OledRose, R.style.Theme_StreakKeeper_OledPlum, R.style.Theme_StreakKeeper_OledOcean, R.style.Theme_StreakKeeper_OledAmber, R.style.Theme_StreakKeeper_OledRed, R.style.Theme_StreakKeeper_OledSlate};
     private boolean reopenSettings;
+    private AlertDialog settingsDialog;
+    private FrameLayout settingsHolder;
+    private ScrollView settingsScroll;
+    private android.widget.HorizontalScrollView accentScroll;
+    private int settingsScrollY, accentScrollX;
+    private final java.util.Map<String, Boolean> settingsExpanded = new java.util.HashMap<>();
     private AppTheme ui;
     private TextView browserContext;
     private boolean formTouched;
@@ -189,14 +198,19 @@ public class MainActivity extends Activity {
 
     @Override public void onCreate(Bundle state) {
         String accent = getSharedPreferences(PREFERENCES_FILE, MODE_PRIVATE).getString(ACCENT_KEY, "indigo");
-        setTheme(ACCENT_THEMES[accentIndex(accent)]);
+        String mode = getSharedPreferences(PREFERENCES_FILE, MODE_PRIVATE).getString(THEME_KEY, "light");
+        int index = accentIndex(accent);
+        setTheme("dark".equals(mode) ? DARK_THEMES[index]
+                : "oled".equals(mode) ? OLED_THEMES[index] : ACCENT_THEMES[index]);
         super.onCreate(state);
         ui = new AppTheme(this);
-        if (android.os.Build.VERSION.SDK_INT >= 27) {
-            getWindow().setNavigationBarColor(ui.background);
-            getWindow().getDecorView().setSystemUiVisibility(
-                    View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR | View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR);
-        }
+        boolean dark = !"light".equals(mode) && ("dark".equals(mode) || "oled".equals(mode));
+        getWindow().setStatusBarColor(ui.surface);
+        if (android.os.Build.VERSION.SDK_INT >= 27) getWindow().setNavigationBarColor(ui.background);
+        else getWindow().setNavigationBarColor(Color.BLACK);
+        int systemUi = dark ? 0 : View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR;
+        if (!dark && android.os.Build.VERSION.SDK_INT >= 27) systemUi |= View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR;
+        getWindow().getDecorView().setSystemUiVisibility(systemUi);
         restoreData();
         friendOrder = FriendList.Order.restore(getSharedPreferences(PREFERENCES_FILE, MODE_PRIVATE)
                 .getString("friendSort", FriendList.Order.OLDEST.name()));
@@ -207,10 +221,14 @@ public class MainActivity extends Activity {
             searchProfileId = state.getString("searchProfileId", "");
         }
 
+        buildInterface(state);
+    }
+
+    private void buildInterface(Bundle state) {
         FrameLayout root = new FrameLayout(this);
         root.setBackgroundColor(ui.background);
         drawerLayout = new DrawerLayout(this);
-        drawerLayout.setScrimColor((ui.text & 0x00FFFFFF) | 0x66000000);
+        drawerLayout.setScrimColor(0x66000000);
         drawerLayout.setDrawerElevation(dp(12));
         drawerLayout.addView(root, new DrawerLayout.LayoutParams(-1, -1));
         setContentView(drawerLayout);
@@ -329,6 +347,7 @@ public class MainActivity extends Activity {
         styleDrawerButton(menuButton, false);
         menuButton.setPadding(0, 0, 0, 0);
         menuButton.setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_menu, 0, 0, 0);
+        menuButton.setCompoundDrawableTintList(ColorStateList.valueOf(ui.text));
         toolbar.addView(menuButton, new LinearLayout.LayoutParams(dp(48), dp(48)));
         toolbarTitle = text("Streak keeper", 22, true);
         toolbarTitle.setSingleLine(true);
@@ -413,7 +432,7 @@ public class MainActivity extends Activity {
             LinearLayout welcome = card();
             welcome.setBackground(ui.profileBackdrop());
             TextView welcomeLabel = text("STREAK KEEPER", 11, true);
-            welcomeLabel.setTextColor(ui.accent);
+            welcomeLabel.setTextColor(ui.accentText);
             welcomeLabel.setLetterSpacing(.08f);
             welcome.addView(welcomeLabel);
             gap(welcome, 6);
@@ -427,7 +446,7 @@ public class MainActivity extends Activity {
             LinearLayout summary = card();
             summary.setBackground(ui.profileBackdrop());
             TextView profileLabel = text("PROFIL ACTIF", 11, true);
-            profileLabel.setTextColor(ui.accent);
+            profileLabel.setTextColor(ui.accentText);
             profileLabel.setLetterSpacing(.08f);
             summary.addView(profileLabel);
             gap(summary, 4);
@@ -647,7 +666,7 @@ public class MainActivity extends Activity {
             if (friend.favorite) {
                 android.widget.ImageView star = new android.widget.ImageView(this);
                 star.setImageResource(R.drawable.ic_favorite);
-                star.setImageTintList(ColorStateList.valueOf(ui.accent));
+                star.setImageTintList(ColorStateList.valueOf(ui.accentText));
                 star.setAlpha(.75f);
                 star.setContentDescription("Favori");
                 LinearLayout.LayoutParams starParams = new LinearLayout.LayoutParams(dp(16), dp(16));
@@ -700,7 +719,7 @@ public class MainActivity extends Activity {
                 circle.setColor(ui.accentSoft);
                 prepare.setBackground(new android.graphics.drawable.RippleDrawable(
                         android.content.res.ColorStateList.valueOf(ui.border), circle, null));
-                prepare.setImageTintList(android.content.res.ColorStateList.valueOf(ui.accent));
+                prepare.setImageTintList(android.content.res.ColorStateList.valueOf(ui.accentText));
                 prepare.setOnClickListener(view -> prepare(friend));
                 prepare.setOnLongClickListener(selectOnLongPress);
                 row.addView(prepare, new LinearLayout.LayoutParams(dp(48), dp(48)));
@@ -850,7 +869,9 @@ public class MainActivity extends Activity {
 
     private void createProfileDrawer() {
         drawerPanel = vertical();
-        drawerPanel.setBackground(ui.gradient(ui.surface, ui.accentSoft, Color.TRANSPARENT));
+        int drawerColor = androidx.core.graphics.ColorUtils.blendARGB(
+                ui.surface, ui.background, ui.dark ? .38f : .65f);
+        drawerPanel.setBackgroundColor(drawerColor);
         drawerPanel.setPadding(dp(16), dp(16), dp(16), dp(16));
         int width = Math.min(dp(320), getResources().getDisplayMetrics().widthPixels - dp(56));
         DrawerLayout.LayoutParams params = new DrawerLayout.LayoutParams(width, -1);
@@ -1094,7 +1115,7 @@ public class MainActivity extends Activity {
         badge.setBackground(new android.graphics.drawable.RippleDrawable(
                 android.content.res.ColorStateList.valueOf(ui.accentSoft),
                 ui.shape(ui.accentSoft, ui.accent), null));
-        badge.setTextColor(ui.accent);
+        badge.setTextColor(ui.accentText);
         badge.setElevation(dp(2));
         return badge;
     }
@@ -1330,7 +1351,7 @@ public class MainActivity extends Activity {
         String favoriteAction = allFavorites ? "Retirer des favoris" : "Ajouter aux favoris";
         selectionFavorite.setContentDescription(favoriteAction);
         selectionFavorite.setTooltipText(favoriteAction);
-        selectionFavorite.setImageTintList(ColorStateList.valueOf(allFavorites ? ui.accent : ui.text));
+        selectionFavorite.setImageTintList(ColorStateList.valueOf(allFavorites ? ui.accentText : ui.text));
         selectionFavorite.setEnabled(!selectedFriends.isEmpty());
         selectionFavorite.setAlpha(selectedFriends.isEmpty() ? .4f : 1f);
         selectionCopy.setEnabled(!selectedFriends.isEmpty());
@@ -1506,10 +1527,32 @@ public class MainActivity extends Activity {
     }
 
     private void showSettings() {
+        settingsExpanded.clear();
+        settingsScrollY = 0;
+        accentScrollX = -1;
+        settingsHolder = new FrameLayout(this);
+        settingsDialog = showDialog(new AlertDialog.Builder(this).setView(settingsHolder));
+        settingsDialog.setOnDismissListener(ignored -> {
+            settingsDialog = null;
+            settingsHolder = null;
+            settingsScroll = null;
+            accentScroll = null;
+        });
+        android.view.Window window = settingsDialog.getWindow();
+        if (window != null) {
+            int height = (int) (getResources().getDisplayMetrics().heightPixels * .8f);
+            window.setLayout(window.getAttributes().width, height);
+        }
+        renderSettings();
+    }
+
+    private void renderSettings() {
+        if (settingsDialog == null || settingsHolder == null) return;
         LinearLayout page = vertical();
         page.setPadding(dp(20), dp(12), dp(20), dp(24));
         page.setBackgroundColor(ui.surface);
         LinearLayout appearance = settingsSection(page, "Apparence", "Choisis la couleur d’accentuation.");
+        addThemeOptions(appearance);
         addAccentPalette(appearance);
         gap(page, 20);
         LinearLayout navigation = settingsSection(page, "Enchaînement", "Choisis comment passer d’un ami à l’autre.");
@@ -1551,13 +1594,13 @@ public class MainActivity extends Activity {
         heading.addView(close, new LinearLayout.LayoutParams(dp(48), dp(48)));
         layout.addView(heading);
         layout.addView(scroll, new LinearLayout.LayoutParams(-1, 0, 1));
-        AlertDialog settings = showDialog(new AlertDialog.Builder(this).setView(layout));
-        close.setOnClickListener(view -> settings.dismiss());
-        android.view.Window window = settings.getWindow();
-        if (window != null) {
-            int height = (int) (getResources().getDisplayMetrics().heightPixels * .8f);
-            window.setLayout(window.getAttributes().width, height);
-        }
+        close.setOnClickListener(view -> settingsDialog.dismiss());
+        settingsHolder.removeAllViews();
+        settingsHolder.addView(layout, new FrameLayout.LayoutParams(-1, -1));
+        settingsScroll = scroll;
+        scroll.post(() -> scroll.scrollTo(0, settingsScrollY));
+        android.view.Window window = settingsDialog.getWindow();
+        if (window != null) window.setBackgroundDrawable(ui.shape(ui.surface, Color.TRANSPARENT));
     }
 
     private static int accentIndex(String id) {
@@ -1565,10 +1608,85 @@ public class MainActivity extends Activity {
         return 0;
     }
 
+    private void addThemeOptions(LinearLayout section) {
+        LinearLayout content = vertical();
+        content.setPadding(dp(16), dp(4), dp(16), dp(8));
+        content.addView(text("Thème", 15, true));
+        gap(content, 6);
+        String current = getSharedPreferences(PREFERENCES_FILE, MODE_PRIVATE).getString(THEME_KEY, "light");
+        String[] ids = {"light", "dark", "oled"};
+        String[] names = {"Clair", "Sombre", "OLED"};
+        ProfileBadgeLayout choices = new ProfileBadgeLayout();
+        for (int i = 0; i < ids.length; i++) {
+            final String id = ids[i];
+            boolean selected = id.equals(current);
+            Button choice = button(names[i], () -> {});
+            ui.button(choice, selected ? AppTheme.ButtonStyle.PRIMARY : AppTheme.ButtonStyle.SECONDARY);
+            choice.setContentDescription(names[i] + (selected ? ", thème sélectionné" : ""));
+            choice.setOnClickListener(view -> {
+                if (selected) return;
+                getSharedPreferences(PREFERENCES_FILE, MODE_PRIVATE).edit().putString(THEME_KEY, id).apply();
+                applyAppearance();
+            });
+            choices.addView(choice);
+        }
+        content.addView(choices);
+        gap(content, 12);
+        content.addView(text("Couleur d’accentuation", 15, true));
+        section.addView(content);
+    }
+
     private void changeAccent(String value) {
         getSharedPreferences(PREFERENCES_FILE, MODE_PRIVATE).edit().putString(ACCENT_KEY, value).apply();
-        reopenSettings = true;
-        recreate();
+        applyAppearance();
+    }
+
+    private void applyAppearance() {
+        android.graphics.drawable.BitmapDrawable previous = null;
+        if (settingsHolder != null && settingsHolder.getWidth() > 0 && settingsHolder.getHeight() > 0
+                && android.animation.ValueAnimator.areAnimatorsEnabled()) {
+            settingsHolder.getOverlay().clear();
+            android.graphics.Bitmap image = android.graphics.Bitmap.createBitmap(
+                    settingsHolder.getWidth(), settingsHolder.getHeight(), android.graphics.Bitmap.Config.ARGB_8888);
+            settingsHolder.draw(new android.graphics.Canvas(image));
+            previous = new android.graphics.drawable.BitmapDrawable(getResources(), image);
+            previous.setBounds(0, 0, settingsHolder.getWidth(), settingsHolder.getHeight());
+        }
+        settingsScrollY = settingsScroll == null ? 0 : settingsScroll.getScrollY();
+        accentScrollX = accentScroll == null ? -1 : accentScroll.getScrollX();
+        String accent = getSharedPreferences(PREFERENCES_FILE, MODE_PRIVATE).getString(ACCENT_KEY, "indigo");
+        String mode = getSharedPreferences(PREFERENCES_FILE, MODE_PRIVATE).getString(THEME_KEY, "light");
+        int index = accentIndex(accent);
+        int themeId = "dark".equals(mode) ? DARK_THEMES[index]
+                : "oled".equals(mode) ? OLED_THEMES[index] : ACCENT_THEMES[index];
+        android.content.res.Resources.Theme theme = getResources().newTheme();
+        theme.applyStyle(themeId, true);
+        getTheme().setTo(theme);
+        ui = new AppTheme(this);
+        getWindow().setStatusBarColor(ui.surface);
+        if (android.os.Build.VERSION.SDK_INT >= 27) getWindow().setNavigationBarColor(ui.background);
+        int flags = ui.dark ? 0 : View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR;
+        if (!ui.dark && android.os.Build.VERSION.SDK_INT >= 27) flags |= View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR;
+        getWindow().getDecorView().setSystemUiVisibility(flags);
+        if (browser != null) { browser.stopLoading(); browser.destroy(); }
+        buildInterface(null);
+        renderSettings();
+        if (previous != null && settingsHolder != null) {
+            FrameLayout holder = settingsHolder;
+            android.graphics.drawable.BitmapDrawable snapshot = previous;
+            holder.getOverlay().add(snapshot);
+            holder.postOnAnimation(() -> {
+                android.animation.ValueAnimator fade = android.animation.ValueAnimator.ofInt(255, 0);
+                fade.setDuration(240);
+                fade.addUpdateListener(value -> snapshot.setAlpha((int) value.getAnimatedValue()));
+                fade.addListener(new android.animation.AnimatorListenerAdapter() {
+                    @Override public void onAnimationEnd(android.animation.Animator value) {
+                        holder.getOverlay().remove(snapshot);
+                    }
+                });
+                fade.start();
+            });
+        }
     }
 
     private void addAccentPalette(LinearLayout section) {
@@ -1578,6 +1696,7 @@ public class MainActivity extends Activity {
         gap(content, 8);
         android.widget.HorizontalScrollView scroll = new android.widget.HorizontalScrollView(this);
         scroll.setHorizontalScrollBarEnabled(false);
+        accentScroll = scroll;
         LinearLayout palette = horizontal();
         String current = getSharedPreferences(PREFERENCES_FILE, MODE_PRIVATE).getString(ACCENT_KEY, "indigo");
         for (int i = 0; i < ACCENT_IDS.length; i++) {
@@ -1587,11 +1706,23 @@ public class MainActivity extends Activity {
             option.setOnClickListener(view -> { if (!selected) changeAccent(ACCENT_IDS[index]); });
             palette.addView(option, new LinearLayout.LayoutParams(dp(48), dp(48)));
         }
-        boolean custom = current != null && current.matches("#[0-9a-fA-F]{6}");
-        if (custom) {
-            Button option = accentOrb(ui.accent, true, "Couleur personnalisée");
-            option.setOnClickListener(view -> showCustomAccent());
+        List<String> customColors = customAccents();
+        int selectedIndex = accentIndex(current);
+        for (int i = 0; i < customColors.size(); i++) {
+            String value = customColors.get(i);
+            boolean selected = value.equalsIgnoreCase(current);
+            Button option = accentOrb(Color.parseColor(value), selected, "Couleur personnalisée " + value);
+            option.setTooltipText("Appui long pour supprimer " + value);
+            option.setOnClickListener(view -> { if (!selected) changeAccent(value); });
+            option.setOnLongClickListener(view -> {
+                showDialog(new AlertDialog.Builder(this).setTitle("Supprimer cette couleur ?")
+                        .setMessage("Cette couleur personnalisée sera retirée de la palette.")
+                        .setNegativeButton("Annuler", null)
+                        .setPositiveButton("Supprimer", (dialog, which) -> removeCustomAccent(value)));
+                return true;
+            });
             palette.addView(option, new LinearLayout.LayoutParams(dp(48), dp(48)));
+            if (selected) selectedIndex = ACCENT_IDS.length + i;
         }
         Button add = button("+", this::showCustomAccent);
         ui.button(add, AppTheme.ButtonStyle.QUIET);
@@ -1606,8 +1737,8 @@ public class MainActivity extends Activity {
         add.setContentDescription("Choisir une couleur personnalisée");
         palette.addView(add, new LinearLayout.LayoutParams(dp(48), dp(48)));
         scroll.addView(palette);
-        int selectedIndex = custom ? ACCENT_IDS.length : accentIndex(current);
-        scroll.post(() -> scroll.smoothScrollTo(Math.max(0, selectedIndex * dp(48) - scroll.getWidth() / 2 + dp(24)), 0));
+        final int scrollIndex = selectedIndex;
+        scroll.post(() -> scroll.scrollTo(accentScrollX >= 0 ? accentScrollX : Math.max(0, scrollIndex * dp(48) - scroll.getWidth() / 2 + dp(24)), 0));
         content.addView(scroll);
         section.addView(content);
     }
@@ -1618,7 +1749,7 @@ public class MainActivity extends Activity {
         orb.setShape(android.graphics.drawable.GradientDrawable.OVAL);
         orb.setColor(color);
         option.setBackground(new android.graphics.drawable.InsetDrawable(orb, dp(6)));
-        option.setTextColor(Color.WHITE);
+        option.setTextColor(androidx.core.graphics.ColorUtils.calculateContrast(Color.WHITE, color) >= 4.5 ? Color.WHITE : Color.BLACK);
         option.setTextSize(18);
         option.setPadding(0, 0, 0, 0);
         option.setSelected(selected);
@@ -1626,35 +1757,105 @@ public class MainActivity extends Activity {
         return option;
     }
 
+    private List<String> customAccents() {
+        SharedPreferences prefs = getSharedPreferences(PREFERENCES_FILE, MODE_PRIVATE);
+        List<String> colors = new ArrayList<>();
+        try {
+            JSONArray saved = new JSONArray(prefs.getString("customAccents", "[]"));
+            for (int i = 0; i < saved.length(); i++) {
+                String value = saved.optString(i, "").toUpperCase(java.util.Locale.ROOT);
+                if (value.matches("#[0-9A-F]{6}") && !colors.contains(value)) colors.add(value);
+            }
+        } catch (JSONException ignored) { }
+        String current = prefs.getString(ACCENT_KEY, "indigo");
+        if (current != null && current.matches("#[0-9a-fA-F]{6}")) {
+            current = current.toUpperCase(java.util.Locale.ROOT);
+            if (!colors.contains(current)) {
+                colors.add(current);
+                prefs.edit().putString("customAccents", new JSONArray(colors).toString()).apply();
+            }
+        }
+        return colors;
+    }
+
+    private void removeCustomAccent(String value) {
+        List<String> colors = customAccents();
+        colors.remove(value);
+        SharedPreferences prefs = getSharedPreferences(PREFERENCES_FILE, MODE_PRIVATE);
+        SharedPreferences.Editor edit = prefs.edit().putString("customAccents", new JSONArray(colors).toString());
+        if (value.equalsIgnoreCase(prefs.getString(ACCENT_KEY, "indigo"))) edit.putString(ACCENT_KEY, "indigo");
+        edit.apply();
+        applyAppearance();
+    }
+
     private void showCustomAccent() {
         LinearLayout content = vertical();
-        content.setPadding(dp(20), dp(8), dp(20), dp(8));
-        content.addView(mutedText("Saisis une couleur hexadécimale, par exemple #4F46E5. Choisis une couleur suffisamment foncée pour rester lisible sur fond clair.", 14));
-        EditText input = new EditText(this);
-        input.setSingleLine(true);
-        input.setHint("#4F46E5");
-        input.setInputType(android.text.InputType.TYPE_CLASS_TEXT | android.text.InputType.TYPE_TEXT_FLAG_CAP_CHARACTERS);
-        ui.input(input);
+        content.setPadding(dp(20), dp(8), dp(20), dp(12));
+        content.addView(mutedText("Choisis une couleur sur la roue et ajuste sa luminosité.", 14));
         String current = getSharedPreferences(PREFERENCES_FILE, MODE_PRIVATE).getString(ACCENT_KEY, "indigo");
-        if (current != null && current.matches("#[0-9a-fA-F]{6}")) input.setText(current);
-        gap(content, 12);
-        content.addView(input);
+        int initial = current != null && current.matches("#[0-9a-fA-F]{6}")
+                ? Color.parseColor(current) : getColor(ACCENT_COLORS[accentIndex(current)]);
+        ColorWheel wheel = new ColorWheel(this, initial);
+        LinearLayout.LayoutParams wheelParams = new LinearLayout.LayoutParams(-1, dp(220));
+        content.addView(wheel, wheelParams);
+        TextView preview = text("", 14, true);
+        preview.setGravity(Gravity.CENTER);
+        preview.setPadding(dp(12), dp(10), dp(12), dp(10));
+        content.addView(preview, new LinearLayout.LayoutParams(-1, -2));
+        TextView info = mutedText("", 13);
+        content.addView(info);
+        android.widget.SeekBar hue = new android.widget.SeekBar(this);
+        android.widget.SeekBar saturation = new android.widget.SeekBar(this);
+        android.widget.SeekBar brightness = new android.widget.SeekBar(this);
+        hue.setMax(359); saturation.setMax(100); brightness.setMax(100);
+        hue.setContentDescription("Teinte");
+        saturation.setContentDescription("Saturation");
+        brightness.setContentDescription("Luminosité");
+        content.addView(mutedText("Teinte", 13)); content.addView(hue);
+        content.addView(mutedText("Saturation", 13)); content.addView(saturation);
+        content.addView(mutedText("Luminosité", 13)); content.addView(brightness);
+        ScrollView scroll = new ScrollView(this);
+        scroll.addView(content);
         AlertDialog dialog = showDialog(new AlertDialog.Builder(this).setTitle("Couleur personnalisée")
-                .setView(content).setNegativeButton("Annuler", null).setPositiveButton("Appliquer", null));
-        dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(view -> {
-            String value = input.getText().toString().trim();
-            if (!value.matches("#[0-9a-fA-F]{6}")) {
-                input.setError("Utilise le format #RRGGBB.");
-                return;
+                .setView(scroll).setNegativeButton("Annuler", null).setPositiveButton("Appliquer", null));
+        Button apply = dialog.getButton(AlertDialog.BUTTON_POSITIVE);
+        Runnable update = () -> {
+            int color = wheel.color();
+            preview.setText("Aperçu");
+            preview.setBackground(ui.shape(color, Color.TRANSPARENT));
+            preview.setTextColor(androidx.core.graphics.ColorUtils.calculateContrast(Color.WHITE, color) >= 4.5
+                    ? Color.WHITE : Color.BLACK);
+            info.setText("");
+            apply.setEnabled(true);
+            apply.setAlpha(1f);
+            hue.setProgress(Math.round(wheel.hue()));
+            saturation.setProgress(Math.round(wheel.saturation() * 100));
+            brightness.setProgress(Math.round(wheel.brightness() * 100));
+        };
+        android.widget.SeekBar.OnSeekBarChangeListener listener = new android.widget.SeekBar.OnSeekBarChangeListener() {
+            @Override public void onProgressChanged(android.widget.SeekBar bar, int progress, boolean fromUser) {
+                if (!fromUser) return;
+                if (bar == hue) wheel.setHue(progress);
+                else if (bar == saturation) wheel.setSaturation(progress / 100f);
+                else wheel.setBrightness(progress / 100f);
             }
-            int color = Color.parseColor(value);
-            if (androidx.core.graphics.ColorUtils.calculateContrast(Color.WHITE, color) < 4.5) {
-                input.setError("Choisis une couleur plus foncée pour assurer la lisibilité.");
-                return;
-            }
+            @Override public void onStartTrackingTouch(android.widget.SeekBar bar) { }
+            @Override public void onStopTrackingTouch(android.widget.SeekBar bar) { }
+        };
+        hue.setOnSeekBarChangeListener(listener);
+        saturation.setOnSeekBarChangeListener(listener);
+        brightness.setOnSeekBarChangeListener(listener);
+        wheel.setOnColorChanged(update);
+        apply.setOnClickListener(view -> {
+            String value = String.format(java.util.Locale.ROOT, "#%06X", wheel.color() & 0xFFFFFF);
+            List<String> colors = customAccents();
+            if (!colors.contains(value)) colors.add(value);
+            getSharedPreferences(PREFERENCES_FILE, MODE_PRIVATE).edit()
+                    .putString("customAccents", new JSONArray(colors).toString()).apply();
             dialog.dismiss();
-            changeAccent(value.toUpperCase(java.util.Locale.ROOT));
+            changeAccent(value);
         });
+        update.run();
     }
 
     private LinearLayout settingsSection(LinearLayout page, String title, String description) {
@@ -1680,7 +1881,7 @@ public class MainActivity extends Activity {
         words.addView(mutedText(description, 13));
         header.addView(words, new LinearLayout.LayoutParams(0, -2, 1));
         TextView chevron = text("⌃", 24, true);
-        chevron.setTextColor(ui.accent);
+        chevron.setTextColor(ui.accentText);
         chevron.setGravity(Gravity.CENTER);
         chevron.setPadding(0, 0, 0, 0);
         chevron.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
@@ -1690,10 +1891,16 @@ public class MainActivity extends Activity {
         card.addView(section, new LinearLayout.LayoutParams(-1, -2));
         header.setFocusable(true);
         header.setContentDescription(title + ", déplié. Appuyer pour replier.");
-        final boolean[] expanded = {true};
+        final boolean[] expanded = {settingsExpanded.containsKey(title) ? settingsExpanded.get(title) : true};
+        if (!expanded[0]) {
+            section.setVisibility(View.GONE);
+            chevron.setText("⌄");
+            header.setContentDescription(title + ", replié. Appuyer pour déplier.");
+        }
         final android.animation.ValueAnimator[] animation = {null};
         header.setOnClickListener(view -> {
             expanded[0] = !expanded[0];
+            settingsExpanded.put(title, expanded[0]);
             if (animation[0] != null) animation[0].cancel();
             int start = section.getVisibility() == View.VISIBLE ? section.getHeight() : 0;
             section.setVisibility(View.VISIBLE);

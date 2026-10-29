@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Only the light theme is shipped. Future themes override these semantic roles. -->
+    <!-- Light defaults; dark and OLED styles override the same semantic roles. -->
     <style name="Theme.StreakKeeper.Base" parent="android:style/Theme.Material.Light.NoActionBar">
         <item name="android:fontFamily">sans</item>
         <item name="android:colorAccent">@color/sk_accent</item>
@@ -25,6 +25,7 @@
         <item name="android:textColorPrimary">@color/sk_text</item>
         <item name="android:textColorSecondary">@color/sk_muted</item>
         <item name="android:windowBackground">@drawable/dialog_surface</item>
+        <item name="skSurface">@color/sk_surface</item>
         <item name="android:colorBackground">@color/sk_surface</item>
     </style>
     <style name="Theme.StreakKeeper" parent="Theme.StreakKeeper.Base" />
@@ -90,6 +91,208 @@
         <item name="android:alertDialogTheme">@style/Theme.StreakKeeper.Dialog.Slate</item>
     </style>
     <style name="Theme.StreakKeeper.Dialog.Slate" parent="Theme.StreakKeeper.Dialog">
+        <item name="android:colorAccent">@color/sk_accent_slate</item>
+    </style>
+    <style name="Theme.StreakKeeper.DarkBase" parent="android:style/Theme.Material.NoActionBar">
+        <item name="android:fontFamily">sans</item>
+        <item name="android:colorAccent">@color/sk_accent</item>
+        <item name="android:windowBackground">@color/sk_dark_background</item>
+        <item name="android:colorBackground">@color/sk_dark_background</item>
+        <item name="android:colorForeground">@color/sk_dark_text</item>
+        <item name="android:textColorPrimary">@color/sk_dark_text</item>
+        <item name="android:textColorSecondary">@color/sk_dark_muted</item>
+        <item name="android:statusBarColor">@color/sk_dark_surface</item>
+        <item name="android:navigationBarColor">@color/sk_dark_background</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:alertDialogTheme">@style/Theme.StreakKeeper.DarkDialog</item>
+        <item name="skBackground">@color/sk_dark_background</item>
+        <item name="skSurface">@color/sk_dark_surface</item>
+        <item name="skText">@color/sk_dark_text</item>
+        <item name="skMuted">@color/sk_dark_muted</item>
+        <item name="skBorder">@color/sk_dark_border</item>
+    </style>
+    <style name="Theme.StreakKeeper.DarkDialog" parent="android:style/Theme.Material.Dialog.Alert">
+        <item name="android:fontFamily">sans</item>
+        <item name="android:colorAccent">@color/sk_accent</item>
+        <item name="android:textColorPrimary">@color/sk_dark_text</item>
+        <item name="android:textColorSecondary">@color/sk_dark_muted</item>
+        <item name="android:windowBackground">@drawable/dialog_surface</item>
+        <item name="android:colorBackground">@color/sk_dark_surface</item>
+        <item name="skBackground">@color/sk_dark_background</item>
+        <item name="skSurface">@color/sk_dark_surface</item>
+        <item name="skText">@color/sk_dark_text</item>
+        <item name="skMuted">@color/sk_dark_muted</item>
+        <item name="skBorder">@color/sk_dark_border</item>
+    </style>
+    <style name="Theme.StreakKeeper.DarkIndigo" parent="Theme.StreakKeeper.DarkBase">
+        <item name="android:colorAccent">@color/sk_accent</item>
+        <item name="android:alertDialogTheme">@style/Theme.StreakKeeper.DarkDialogIndigo</item>
+    </style>
+    <style name="Theme.StreakKeeper.DarkDialogIndigo" parent="Theme.StreakKeeper.DarkDialog">
+        <item name="android:colorAccent">@color/sk_accent</item>
+    </style>
+    <style name="Theme.StreakKeeper.DarkBlue" parent="Theme.StreakKeeper.DarkBase">
+        <item name="android:colorAccent">@color/sk_accent_blue</item>
+        <item name="android:alertDialogTheme">@style/Theme.StreakKeeper.DarkDialogBlue</item>
+    </style>
+    <style name="Theme.StreakKeeper.DarkDialogBlue" parent="Theme.StreakKeeper.DarkDialog">
+        <item name="android:colorAccent">@color/sk_accent_blue</item>
+    </style>
+    <style name="Theme.StreakKeeper.DarkTeal" parent="Theme.StreakKeeper.DarkBase">
+        <item name="android:colorAccent">@color/sk_accent_teal</item>
+        <item name="android:alertDialogTheme">@style/Theme.StreakKeeper.DarkDialogTeal</item>
+    </style>
+    <style name="Theme.StreakKeeper.DarkDialogTeal" parent="Theme.StreakKeeper.DarkDialog">
+        <item name="android:colorAccent">@color/sk_accent_teal</item>
+    </style>
+    <style name="Theme.StreakKeeper.DarkGreen" parent="Theme.StreakKeeper.DarkBase">
+        <item name="android:colorAccent">@color/sk_accent_green</item>
+        <item name="android:alertDialogTheme">@style/Theme.StreakKeeper.DarkDialogGreen</item>
+    </style>
+    <style name="Theme.StreakKeeper.DarkDialogGreen" parent="Theme.StreakKeeper.DarkDialog">
+        <item name="android:colorAccent">@color/sk_accent_green</item>
+    </style>
+    <style name="Theme.StreakKeeper.DarkRose" parent="Theme.StreakKeeper.DarkBase">
+        <item name="android:colorAccent">@color/sk_accent_rose</item>
+        <item name="android:alertDialogTheme">@style/Theme.StreakKeeper.DarkDialogRose</item>
+    </style>
+    <style name="Theme.StreakKeeper.DarkDialogRose" parent="Theme.StreakKeeper.DarkDialog">
+        <item name="android:colorAccent">@color/sk_accent_rose</item>
+    </style>
+    <style name="Theme.StreakKeeper.DarkPlum" parent="Theme.StreakKeeper.DarkBase">
+        <item name="android:colorAccent">@color/sk_accent_plum</item>
+        <item name="android:alertDialogTheme">@style/Theme.StreakKeeper.DarkDialogPlum</item>
+    </style>
+    <style name="Theme.StreakKeeper.DarkDialogPlum" parent="Theme.StreakKeeper.DarkDialog">
+        <item name="android:colorAccent">@color/sk_accent_plum</item>
+    </style>
+    <style name="Theme.StreakKeeper.DarkOcean" parent="Theme.StreakKeeper.DarkBase">
+        <item name="android:colorAccent">@color/sk_accent_ocean</item>
+        <item name="android:alertDialogTheme">@style/Theme.StreakKeeper.DarkDialogOcean</item>
+    </style>
+    <style name="Theme.StreakKeeper.DarkDialogOcean" parent="Theme.StreakKeeper.DarkDialog">
+        <item name="android:colorAccent">@color/sk_accent_ocean</item>
+    </style>
+    <style name="Theme.StreakKeeper.DarkAmber" parent="Theme.StreakKeeper.DarkBase">
+        <item name="android:colorAccent">@color/sk_accent_amber</item>
+        <item name="android:alertDialogTheme">@style/Theme.StreakKeeper.DarkDialogAmber</item>
+    </style>
+    <style name="Theme.StreakKeeper.DarkDialogAmber" parent="Theme.StreakKeeper.DarkDialog">
+        <item name="android:colorAccent">@color/sk_accent_amber</item>
+    </style>
+    <style name="Theme.StreakKeeper.DarkRed" parent="Theme.StreakKeeper.DarkBase">
+        <item name="android:colorAccent">@color/sk_accent_red</item>
+        <item name="android:alertDialogTheme">@style/Theme.StreakKeeper.DarkDialogRed</item>
+    </style>
+    <style name="Theme.StreakKeeper.DarkDialogRed" parent="Theme.StreakKeeper.DarkDialog">
+        <item name="android:colorAccent">@color/sk_accent_red</item>
+    </style>
+    <style name="Theme.StreakKeeper.DarkSlate" parent="Theme.StreakKeeper.DarkBase">
+        <item name="android:colorAccent">@color/sk_accent_slate</item>
+        <item name="android:alertDialogTheme">@style/Theme.StreakKeeper.DarkDialogSlate</item>
+    </style>
+    <style name="Theme.StreakKeeper.DarkDialogSlate" parent="Theme.StreakKeeper.DarkDialog">
+        <item name="android:colorAccent">@color/sk_accent_slate</item>
+    </style>
+    <style name="Theme.StreakKeeper.OledBase" parent="android:style/Theme.Material.NoActionBar">
+        <item name="android:fontFamily">sans</item>
+        <item name="android:colorAccent">@color/sk_accent</item>
+        <item name="android:windowBackground">@color/sk_oled_background</item>
+        <item name="android:colorBackground">@color/sk_oled_background</item>
+        <item name="android:colorForeground">@color/sk_oled_text</item>
+        <item name="android:textColorPrimary">@color/sk_oled_text</item>
+        <item name="android:textColorSecondary">@color/sk_oled_muted</item>
+        <item name="android:statusBarColor">@color/sk_oled_surface</item>
+        <item name="android:navigationBarColor">@color/sk_oled_background</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:alertDialogTheme">@style/Theme.StreakKeeper.OledDialog</item>
+        <item name="skBackground">@color/sk_oled_background</item>
+        <item name="skSurface">@color/sk_oled_surface</item>
+        <item name="skText">@color/sk_oled_text</item>
+        <item name="skMuted">@color/sk_oled_muted</item>
+        <item name="skBorder">@color/sk_oled_border</item>
+    </style>
+    <style name="Theme.StreakKeeper.OledDialog" parent="android:style/Theme.Material.Dialog.Alert">
+        <item name="android:fontFamily">sans</item>
+        <item name="android:colorAccent">@color/sk_accent</item>
+        <item name="android:textColorPrimary">@color/sk_oled_text</item>
+        <item name="android:textColorSecondary">@color/sk_oled_muted</item>
+        <item name="android:windowBackground">@drawable/dialog_surface</item>
+        <item name="android:colorBackground">@color/sk_oled_surface</item>
+        <item name="skBackground">@color/sk_oled_background</item>
+        <item name="skSurface">@color/sk_oled_surface</item>
+        <item name="skText">@color/sk_oled_text</item>
+        <item name="skMuted">@color/sk_oled_muted</item>
+        <item name="skBorder">@color/sk_oled_border</item>
+    </style>
+    <style name="Theme.StreakKeeper.OledIndigo" parent="Theme.StreakKeeper.OledBase">
+        <item name="android:colorAccent">@color/sk_accent</item>
+        <item name="android:alertDialogTheme">@style/Theme.StreakKeeper.OledDialogIndigo</item>
+    </style>
+    <style name="Theme.StreakKeeper.OledDialogIndigo" parent="Theme.StreakKeeper.OledDialog">
+        <item name="android:colorAccent">@color/sk_accent</item>
+    </style>
+    <style name="Theme.StreakKeeper.OledBlue" parent="Theme.StreakKeeper.OledBase">
+        <item name="android:colorAccent">@color/sk_accent_blue</item>
+        <item name="android:alertDialogTheme">@style/Theme.StreakKeeper.OledDialogBlue</item>
+    </style>
+    <style name="Theme.StreakKeeper.OledDialogBlue" parent="Theme.StreakKeeper.OledDialog">
+        <item name="android:colorAccent">@color/sk_accent_blue</item>
+    </style>
+    <style name="Theme.StreakKeeper.OledTeal" parent="Theme.StreakKeeper.OledBase">
+        <item name="android:colorAccent">@color/sk_accent_teal</item>
+        <item name="android:alertDialogTheme">@style/Theme.StreakKeeper.OledDialogTeal</item>
+    </style>
+    <style name="Theme.StreakKeeper.OledDialogTeal" parent="Theme.StreakKeeper.OledDialog">
+        <item name="android:colorAccent">@color/sk_accent_teal</item>
+    </style>
+    <style name="Theme.StreakKeeper.OledGreen" parent="Theme.StreakKeeper.OledBase">
+        <item name="android:colorAccent">@color/sk_accent_green</item>
+        <item name="android:alertDialogTheme">@style/Theme.StreakKeeper.OledDialogGreen</item>
+    </style>
+    <style name="Theme.StreakKeeper.OledDialogGreen" parent="Theme.StreakKeeper.OledDialog">
+        <item name="android:colorAccent">@color/sk_accent_green</item>
+    </style>
+    <style name="Theme.StreakKeeper.OledRose" parent="Theme.StreakKeeper.OledBase">
+        <item name="android:colorAccent">@color/sk_accent_rose</item>
+        <item name="android:alertDialogTheme">@style/Theme.StreakKeeper.OledDialogRose</item>
+    </style>
+    <style name="Theme.StreakKeeper.OledDialogRose" parent="Theme.StreakKeeper.OledDialog">
+        <item name="android:colorAccent">@color/sk_accent_rose</item>
+    </style>
+    <style name="Theme.StreakKeeper.OledPlum" parent="Theme.StreakKeeper.OledBase">
+        <item name="android:colorAccent">@color/sk_accent_plum</item>
+        <item name="android:alertDialogTheme">@style/Theme.StreakKeeper.OledDialogPlum</item>
+    </style>
+    <style name="Theme.StreakKeeper.OledDialogPlum" parent="Theme.StreakKeeper.OledDialog">
+        <item name="android:colorAccent">@color/sk_accent_plum</item>
+    </style>
+    <style name="Theme.StreakKeeper.OledOcean" parent="Theme.StreakKeeper.OledBase">
+        <item name="android:colorAccent">@color/sk_accent_ocean</item>
+        <item name="android:alertDialogTheme">@style/Theme.StreakKeeper.OledDialogOcean</item>
+    </style>
+    <style name="Theme.StreakKeeper.OledDialogOcean" parent="Theme.StreakKeeper.OledDialog">
+        <item name="android:colorAccent">@color/sk_accent_ocean</item>
+    </style>
+    <style name="Theme.StreakKeeper.OledAmber" parent="Theme.StreakKeeper.OledBase">
+        <item name="android:colorAccent">@color/sk_accent_amber</item>
+        <item name="android:alertDialogTheme">@style/Theme.StreakKeeper.OledDialogAmber</item>
+    </style>
+    <style name="Theme.StreakKeeper.OledDialogAmber" parent="Theme.StreakKeeper.OledDialog">
+        <item name="android:colorAccent">@color/sk_accent_amber</item>
+    </style>
+    <style name="Theme.StreakKeeper.OledRed" parent="Theme.StreakKeeper.OledBase">
+        <item name="android:colorAccent">@color/sk_accent_red</item>
+        <item name="android:alertDialogTheme">@style/Theme.StreakKeeper.OledDialogRed</item>
+    </style>
+    <style name="Theme.StreakKeeper.OledDialogRed" parent="Theme.StreakKeeper.OledDialog">
+        <item name="android:colorAccent">@color/sk_accent_red</item>
+    </style>
+    <style name="Theme.StreakKeeper.OledSlate" parent="Theme.StreakKeeper.OledBase">
+        <item name="android:colorAccent">@color/sk_accent_slate</item>
+        <item name="android:alertDialogTheme">@style/Theme.StreakKeeper.OledDialogSlate</item>
+    </style>
+    <style name="Theme.StreakKeeper.OledDialogSlate" parent="Theme.StreakKeeper.OledDialog">
         <item name="android:colorAccent">@color/sk_accent_slate</item>
     </style>
 </resources>

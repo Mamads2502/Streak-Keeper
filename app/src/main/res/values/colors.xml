@@ -16,4 +16,14 @@
     <color name="sk_accent_amber">#92400E</color>
     <color name="sk_accent_red">#B42318</color>
     <color name="sk_accent_slate">#475569</color>
+    <color name="sk_dark_background">#10131A</color>
+    <color name="sk_dark_surface">#1C212C</color>
+    <color name="sk_dark_text">#F1F3F8</color>
+    <color name="sk_dark_muted">#B5BDCC</color>
+    <color name="sk_dark_border">#41495A</color>
+    <color name="sk_oled_background">#000000</color>
+    <color name="sk_oled_surface">#0B0C10</color>
+    <color name="sk_oled_text">#F4F4F6</color>
+    <color name="sk_oled_muted">#B9BBC4</color>
+    <color name="sk_oled_border">#292B33</color>
 </resources>

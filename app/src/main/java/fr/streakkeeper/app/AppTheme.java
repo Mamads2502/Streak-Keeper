@@ -27,7 +27,8 @@ import java.util.Locale;
 final class AppTheme {
     enum ButtonStyle { PRIMARY, SECONDARY, QUIET }
 
-    final int background, surface, text, muted, border, accent, accentSoft, onAccent;
+    final int background, surface, text, muted, border, accent, accentText, accentSoft, onAccent;
+    final boolean dark;
     private final float density;
     static final int PAGE_PADDING = 20;
     static final int RADIUS = 18;
@@ -40,6 +41,7 @@ final class AppTheme {
         text = color(context, R.attr.skText);
         muted = color(context, R.attr.skMuted);
         border = color(context, R.attr.skBorder);
+        dark = luminance(surface) < .15;
         String savedAccent = context.getSharedPreferences("MainActivity", Context.MODE_PRIVATE)
                 .getString("accentColor", "indigo");
         int resolvedAccent = color(context, android.R.attr.colorAccent);
@@ -47,6 +49,12 @@ final class AppTheme {
             resolvedAccent = Color.parseColor(savedAccent);
         }
         accent = resolvedAccent;
+        int readableAccent = accent;
+        int toward = dark ? Color.WHITE : Color.BLACK;
+        while (androidx.core.graphics.ColorUtils.calculateContrast(readableAccent, surface) < 4.5) {
+            readableAccent = blend(readableAccent, toward, .08f);
+        }
+        accentText = readableAccent;
         accentSoft = blend(surface, accent, .09f);
         // Pick the higher-contrast foreground even if a future accent is very light.
         onAccent = luminance(accent) > .179 ? Color.BLACK : Color.WHITE;
@@ -168,7 +176,7 @@ final class AppTheme {
                 : style == ButtonStyle.SECONDARY ? accentSoft : surface;
         int foreground = style == ButtonStyle.PRIMARY ? onAccent : text;
         Drawable backgroundShape = style == ButtonStyle.PRIMARY
-                ? gradient(fill, blend(fill, Color.BLACK, .10f), Color.TRANSPARENT)
+                ? gradient(fill, blend(fill, onAccent == Color.BLACK ? Color.WHITE : Color.BLACK, .10f), Color.TRANSPARENT)
                 : shape(fill, Color.TRANSPARENT);
         button.setBackground(new RippleDrawable(ColorStateList.valueOf(blend(fill, foreground, .15f)),
                 backgroundShape, null));
@@ -186,7 +194,7 @@ final class AppTheme {
 
     void input(EditText input) {
         StateListDrawable states = new StateListDrawable();
-        states.addState(new int[]{android.R.attr.state_focused}, shape(surface, accent));
+        states.addState(new int[]{android.R.attr.state_focused}, shape(surface, accentText));
         states.addState(new int[]{}, shape(background, border));
         input.setBackground(states);
         input.setBackgroundTintList(null);
@@ -200,9 +208,9 @@ final class AppTheme {
     String formCss() {
         String palette = "--sk-bg:" + hex(background) + ";--sk-surface:" + hex(surface)
                 + ";--sk-text:" + hex(text) + ";--sk-muted:" + hex(muted)
-                + ";--sk-border:" + hex(border) + ";--sk-accent:" + hex(accent)
+                + ";--sk-border:" + hex(border) + ";--sk-accent:" + hex(accentText)
                 + ";--sk-on-accent:" + hex(onAccent) + ";";
-        return ":root{color-scheme:light;" + palette + "}"
+        return ":root{color-scheme:" + (dark ? "dark;" : "light;") + palette + "}"
                 + "body{background:var(--sk-bg)!important;color:var(--sk-text)!important;"
                 + "font-family:system-ui,sans-serif!important;line-height:1.5;}"
                 + "form#new_request{background:var(--sk-surface);border:1px solid var(--sk-border);"
