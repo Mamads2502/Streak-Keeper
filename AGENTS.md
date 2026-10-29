@@ -17,4 +17,4 @@
 
 - Documentation : relire et vérifier le diff. Code : compiler et effectuer les tests pertinents ; après les modifications importantes, vérifier aussi l’APK debug.
 - Indiquer les vérifications réalisées et leurs limites ; ne pas présenter un comportement non testé comme validé.
-- Terminer chaque modification par une proposition de message de commit.
+- Terminer chaque modification sans demande explicite de commit par une proposition de message courte couvrant toutes les modifications non commitées. Résumer le résultat final lorsque le même élément a changé plusieurs fois et séparer les changements distincts par « + ».
