@@ -274,6 +274,13 @@ public class MainActivity extends Activity {
         WebSettings webSettings = browser.getSettings();
         webSettings.setJavaScriptEnabled(true); // The real help form needs JavaScript.
         webSettings.setDomStorageEnabled(true);
+        // The form is themed by our CSS. Avoid WebView's independent darkening pass,
+        // which can otherwise invert parts of the third-party page a second time.
+        if (android.os.Build.VERSION.SDK_INT >= 33) {
+            webSettings.setAlgorithmicDarkeningAllowed(false);
+        } else if (android.os.Build.VERSION.SDK_INT >= 29) {
+            webSettings.setForceDark(WebSettings.FORCE_DARK_OFF);
+        }
         webSettings.setAllowFileAccess(false);
         webSettings.setAllowContentAccess(false);
         webSettings.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
