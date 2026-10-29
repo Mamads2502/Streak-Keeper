@@ -8,3 +8,6 @@ local.properties
 # Exports personnels Snapchat
 *.[Zz][Ii][Pp]
 [Mm][Yy][Dd][Aa][Tt][Aa]*
+
+# Listes d’amis exportées
+[Aa]mis_*.json

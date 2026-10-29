@@ -122,6 +122,8 @@ public class MainActivity extends Activity {
         }
     };
     private static final int PICK_SNAPCHAT_EXPORT = 408;
+    private static final int SAVE_FRIENDS_EXPORT = 409;
+    private String exportProfileId;
     private String snapchatImportProfileId;
     private WebView browser;
     private View themeCover;
@@ -233,6 +235,7 @@ public class MainActivity extends Activity {
                 .getString("friendSort", FriendList.Order.OLDEST.name()));
         if (state != null) {
             snapchatImportProfileId = state.getString("snapchatImportProfileId");
+            exportProfileId = state.getString("exportProfileId");
             friendQuery = state.getString("friendQuery", "");
             searchOpen = state.getBoolean("friendSearchOpen");
             favoritesOnly = state.getBoolean("favoritesOnly");
@@ -532,8 +535,10 @@ public class MainActivity extends Activity {
             android.graphics.drawable.Drawable importIcon = getDrawable(R.drawable.ic_copy).mutate();
             importIcon.setTint(ui.text);
             importIcon.setBounds(0, 0, dp(20), dp(20));
-            copy.setCompoundDrawablesRelative(importIcon, null, null, null);
-            copy.setCompoundDrawablePadding(dp(6));
+            android.text.SpannableString importLabel = new android.text.SpannableString("\ufffc Importer");
+            importLabel.setSpan(new android.text.style.ImageSpan(importIcon, android.text.style.ImageSpan.ALIGN_BASELINE),
+                    0, 1, android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+            copy.setText(importLabel);
             copy.setPadding(dp(10), dp(12), dp(10), dp(12));
             copy.setContentDescription("Importer des amis");
             LinearLayout.LayoutParams copyParams = new LinearLayout.LayoutParams(0, -2, 1);
@@ -1069,6 +1074,7 @@ public class MainActivity extends Activity {
 
     @Override protected void onSaveInstanceState(Bundle state) {
         state.putString("snapchatImportProfileId", snapchatImportProfileId);
+        state.putString("exportProfileId", exportProfileId);
         state.putBoolean("reopenSettings", reopenSettings);
         state.putString("friendQuery", friendQuery);
         state.putBoolean("friendSearchOpen", searchOpen);
@@ -1214,7 +1220,7 @@ public class MainActivity extends Activity {
         content.addView(profile, new LinearLayout.LayoutParams(-1, -2));
         gap(content, 8);
         LinearLayout row = horizontal();
-        Button snapchat = button("Depuis Snapchat", () -> {});
+        Button snapchat = button("Depuis un fichier JSON ou ZIP", () -> {});
         row.addView(snapchat, new LinearLayout.LayoutParams(0, -2, 1));
         Button info = button("ⓘ", () -> showDialog(new AlertDialog.Builder(this)
                 .setTitle("Exporter ses données Snapchat")
@@ -1238,7 +1244,7 @@ public class MainActivity extends Activity {
             Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
             intent.addCategory(Intent.CATEGORY_OPENABLE);
             intent.setType("*/*");
-            intent.putExtra(Intent.EXTRA_MIME_TYPES, new String[]{"application/zip", "application/x-zip-compressed", "application/octet-stream"});
+            intent.putExtra(Intent.EXTRA_MIME_TYPES, new String[]{"application/json", "application/zip", "application/x-zip-compressed", "application/octet-stream", "text/plain"});
             try { startActivityForResult(intent, PICK_SNAPCHAT_EXPORT); }
             catch (android.content.ActivityNotFoundException e) {
                 snapchatImportProfileId = null;
@@ -1249,16 +1255,55 @@ public class MainActivity extends Activity {
 
     @Override protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == SAVE_FRIENDS_EXPORT) {
+            String profileId = exportProfileId;
+            exportProfileId = null;
+            if (resultCode != RESULT_OK || data == null || data.getData() == null || profileId == null) return;
+            Profile profile = null;
+            for (Profile candidate : profiles) if (candidate.id.equals(profileId)) profile = candidate;
+            if (profile == null) {
+                Toast.makeText(this, "Le profil à exporter n’existe plus.", Toast.LENGTH_LONG).show();
+                return;
+            }
+            List<FriendsTransfer.Entry> entries = new ArrayList<>();
+            for (Friend friend : profile.friends) entries.add(new FriendsTransfer.Entry(
+                    friend.name, friend.username, friend.addedAt, friend.favorite, friend.lastRequestAt));
+            final String json;
+            try { json = FriendsTransfer.write(entries); }
+            catch (JSONException e) {
+                Toast.makeText(this, "Impossible de préparer le fichier JSON.", Toast.LENGTH_LONG).show();
+                return;
+            }
+            Uri uri = data.getData();
+            new Thread(() -> {
+                try {
+                    try (java.io.OutputStream output = getContentResolver().openOutputStream(uri, "wt")) {
+                        if (output == null) throw new java.io.IOException();
+                        output.write(json.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+                    }
+                    runOnUiThread(() -> {
+                        if (!isFinishing() && !isDestroyed()) Toast.makeText(this, "Amis exportés.", Toast.LENGTH_LONG).show();
+                    });
+                } catch (java.io.IOException | SecurityException e) {
+                    runOnUiThread(() -> {
+                        if (!isFinishing() && !isDestroyed()) showDialog(new AlertDialog.Builder(this)
+                                .setTitle("Export impossible").setMessage("Le fichier n’a pas pu être enregistré. Vérifie le stockage et réessaie.")
+                                .setPositiveButton("Compris", null));
+                    });
+                }
+            }).start();
+            return;
+        }
         if (requestCode != PICK_SNAPCHAT_EXPORT) return;
         String profileId = snapchatImportProfileId;
         snapchatImportProfileId = null;
         if (resultCode != RESULT_OK || data == null || data.getData() == null || profileId == null) return;
         Uri uri = data.getData();
-        Toast.makeText(this, "Lecture de l’export Snapchat…", Toast.LENGTH_SHORT).show();
+        Toast.makeText(this, "Lecture du fichier…", Toast.LENGTH_SHORT).show();
         new Thread(() -> {
             try (java.io.InputStream input = getContentResolver().openInputStream(uri)) {
                 if (input == null) throw new java.io.IOException("Fichier inaccessible.");
-                List<SnapchatImport.Entry> entries = SnapchatImport.read(input);
+                List<FriendsTransfer.Entry> entries = FriendsTransfer.read(input);
                 runOnUiThread(() -> {
                     if (isFinishing() || isDestroyed()) return;
                     Profile destination = null;
@@ -1269,19 +1314,24 @@ public class MainActivity extends Activity {
                     }
                     if (entries.isEmpty()) {
                         showDialog(new AlertDialog.Builder(this).setTitle("Aucun ami trouvé")
-                                .setMessage("La liste des amis actuels est vide ou ne contient aucun pseudo exploitable. Vérifie les données sélectionnées dans Snapchat ; certains exports peuvent contenir une liste vide.")
+                                .setMessage("Le fichier ne contient aucun ami à importer. Pour un export Snapchat, vérifie les données sélectionnées ; certains exports peuvent contenir une liste vide.")
                                 .setPositiveButton("Compris", null));
                         return;
                     }
                     Profile source = new Profile();
-                    source.name = "Snapchat";
-                    for (SnapchatImport.Entry entry : entries) source.friends.add(new Friend(entry.name, entry.username));
-                    selectFriendsToImport(source, destination);
+                    source.name = "ce fichier";
+                    for (FriendsTransfer.Entry entry : entries) {
+                        Friend friend = new Friend(entry.name, entry.username, entry.addedAt);
+                        friend.favorite = entry.favorite;
+                        friend.lastRequestAt = entry.lastRequestAt;
+                        source.friends.add(friend);
+                    }
+                    selectFriendsToImport(source, destination, true);
                 });
-            } catch (java.io.IOException | org.json.JSONException e) {
+            } catch (java.io.IOException | org.json.JSONException | SecurityException e) {
                 runOnUiThread(() -> {
                     if (!isFinishing() && !isDestroyed()) showDialog(new AlertDialog.Builder(this)
-                            .setTitle("Import impossible").setMessage(e.getMessage())
+                            .setTitle("Import impossible").setMessage(e.getMessage() == null ? "Le fichier est inaccessible ou invalide." : e.getMessage())
                             .setPositiveButton("Compris", null));
                 });
             }
@@ -1319,6 +1369,10 @@ public class MainActivity extends Activity {
     }
 
     private void selectFriendsToImport(Profile source, Profile destination) {
+        selectFriendsToImport(source, destination, false);
+    }
+
+    private void selectFriendsToImport(Profile source, Profile destination, boolean preserveMetadata) {
         LinearLayout content = vertical();
         content.setPadding(dp(20), dp(8), dp(20), dp(12));
         EditText search = new EditText(this);
@@ -1434,7 +1488,13 @@ public class MainActivity extends Activity {
         importButton.setOnClickListener(view -> {
             int count = 0;
             for (Friend friend : chosen) {
-                if (FriendList.copyTo(friend, destination.friends, (name, username) -> copyFriendData(friend, name, username))) count++;
+                if (FriendList.copyTo(friend, destination.friends, (name, username) -> {
+                    if (!preserveMetadata) return copyFriendData(friend, name, username);
+                    Friend copy = new Friend(name, username, friend.addedAt);
+                    copy.favorite = friend.favorite;
+                    copy.lastRequestAt = friend.lastRequestAt;
+                    return copy;
+                })) count++;
             }
             if (count > 0) { persist(); renderHome(); }
             dialog.dismiss();
@@ -1694,6 +1754,25 @@ public class MainActivity extends Activity {
         }
     }
 
+    private void exportActiveFriends() {
+        if (active == null) return;
+        exportProfileId = active.id;
+        String safeName = active.name.trim().replaceAll("[^\\p{L}\\p{N}._-]+", "_");
+        if (safeName.isEmpty()) safeName = "profil";
+        if (safeName.length() > 50) safeName = safeName.substring(0, 50);
+        String date = new java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.ROOT)
+                .format(new java.util.Date());
+        Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT);
+        intent.addCategory(Intent.CATEGORY_OPENABLE);
+        intent.setType("application/json");
+        intent.putExtra(Intent.EXTRA_TITLE, "amis_" + safeName + "_" + date + ".json");
+        try { startActivityForResult(intent, SAVE_FRIENDS_EXPORT); }
+        catch (android.content.ActivityNotFoundException e) {
+            exportProfileId = null;
+            Toast.makeText(this, "Aucun sélecteur de fichiers disponible.", Toast.LENGTH_LONG).show();
+        }
+    }
+
     private void showSettings() {
         settingsExpanded.clear();
         settingsScrollY = 0;
@@ -1751,6 +1830,12 @@ public class MainActivity extends Activity {
                 "Après le chargement, la page se place sur le bouton d’envoi ou sur un élément "
                 + "qui demande ton attention, comme une erreur ou une vérification visible. "
                 + "Tu peux désactiver cette option pour parcourir le formulaire toi-même.");
+
+        gap(page, 20);
+        Button exportFriends = button("Exporter les amis du profil actif", this::exportActiveFriends);
+        exportFriends.setEnabled(active != null);
+        exportFriends.setAlpha(active == null ? .5f : 1f);
+        page.addView(exportFriends, new LinearLayout.LayoutParams(-1, -2));
 
         ScrollView scroll = new ScrollView(this);
         scroll.setFillViewport(true);

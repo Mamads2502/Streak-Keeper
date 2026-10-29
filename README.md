@@ -272,4 +272,12 @@ Dans Paramètres → Apparence, active « Demandes récentes » pour voir un poi
 
 ### Importer ses amis Snapchat
 
-Depuis le bouton d’import près d’« Ajouter un ami », choisir « Depuis Snapchat ». Sur accounts.snapchat.com, demander un export « Mes données » en sélectionnant les données utilisateur et les fichiers JSON, puis télécharger le ZIP. Sélectionner ce ZIP dans l’application : les amis actuels trouvés peuvent être choisis avant l’import. Le nom affiché de l’export est utilisé lorsqu’il existe ; le pseudo Snapchat reste enregistré pour le formulaire. Les doublons du profil sont ignorés et la lecture s’effectue sur le téléphone. Un export sans `json/friends.json`, ou dont la liste `Friends` est vide, ne permet pas l’import.
+Depuis le bouton d’import près d’« Ajouter un ami », choisir « Depuis un fichier JSON ou ZIP ». Sur accounts.snapchat.com, demander un export « Mes données » en sélectionnant les données utilisateur et les fichiers JSON, puis télécharger le ZIP. Sélectionner ce ZIP dans l’application : les amis actuels trouvés peuvent être choisis avant l’import. Le nom affiché de l’export est utilisé lorsqu’il existe ; le pseudo Snapchat reste enregistré pour le formulaire. Les doublons du profil sont ignorés et la lecture s’effectue sur le téléphone. Un export sans `json/friends.json`, ou dont la liste `Friends` est vide, ne permet pas l’import.
+
+### Exporter et transférer une liste d’amis
+
+Dans les paramètres, « Exporter les amis du profil actif » permet d’enregistrer un fichier JSON sur le téléphone. Pour le réimporter dans un profil, utiliser « Importer » puis « Depuis un fichier JSON ou ZIP » ; les amis à ajouter peuvent être sélectionnés et ceux déjà présents sont ignorés. Le même choix accepte aussi le ZIP Snapchat décrit ci-dessus. Les fichiers sont traités localement.
+
+Le format JSON de Streak keeper est versionné : l’objet racine contient `format` (`streak-keeper-friends`), `version` (1) et un tableau `friends`. Chaque ami possède `username` (pseudo réel), `name` (nom affiché), `favorite` (booléen), `addedAt` et `lastRequestAt` (dates en millisecondes Unix ; 0 signifie inconnue ou absente). Aucun identifiant de profil, e-mail ou téléphone n’est exporté. Les champs d’un ami importé depuis ce JSON sont conservés ; un doublon déjà présent n’est pas remplacé. Le fichier peut contenir des données personnelles : le stocker et le partager avec précaution.
+
+Le test autonome `tests/FriendsTransferTest.java` utilise uniquement des données fictives et couvre l’aller-retour JSON, le ZIP et les formats invalides. Il s’exécute sur Android avec `app_process` après compilation des classes `FriendsTransfer`, `SnapchatImport` et du test en DEX ; il ne remplace pas un test de l’interface et du sélecteur de fichiers.
