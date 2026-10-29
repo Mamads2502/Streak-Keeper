@@ -78,13 +78,15 @@ public class MainActivity extends Activity {
     private Profile active;
     private Profile pendingProfile;
     private Friend pendingFriend;
-    private ScrollView home;
+    private SelectionScrollView home;
     private LinearLayout homePanel;
     private DrawerLayout drawerLayout;
     private LinearLayout drawerPanel;
     private LinearLayout drawerProfiles;
     private Button menuButton;
     private ImageButton settingsButton;
+    private ImageButton selectionEdit, selectionCopy, selectionDelete;
+    private TextView toolbarTitle;
     private Button procedureBack, procedureNext;
     private boolean automaticAdvance, procedureFinished, automaticFill, automaticCenter;
     private WebView browser;
@@ -100,7 +102,7 @@ public class MainActivity extends Activity {
     private String submitMarker;
     private LinearLayout selectionBar;
     private Button selectionAction;
-    private Button selectionClose;
+    private ImageButton selectionClose;
 
     static final class Friend implements FriendList.Entry {
         String name, username;
@@ -308,8 +310,24 @@ public class MainActivity extends Activity {
         menuButton.setPadding(0, 0, 0, 0);
         menuButton.setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_menu, 0, 0, 0);
         toolbar.addView(menuButton, new LinearLayout.LayoutParams(dp(48), dp(48)));
-        TextView title = text("Streak keeper", 22, true);
-        toolbar.addView(title, new LinearLayout.LayoutParams(0, -2, 1));
+        toolbarTitle = text("Streak keeper", 22, true);
+        toolbarTitle.setSingleLine(true);
+        toolbarTitle.setEllipsize(TextUtils.TruncateAt.END);
+        toolbar.addView(toolbarTitle, new LinearLayout.LayoutParams(0, -2, 1));
+        selectionEdit = friendToolIcon(R.drawable.ic_edit, "Modifier l’ami sélectionné");
+        selectionEdit.setOnClickListener(view -> {
+            if (active != null && selectedFriends.size() == 1) editFriend(active, selectedFriends.get(0));
+        });
+        toolbar.addView(selectionEdit, new LinearLayout.LayoutParams(dp(48), dp(48)));
+        selectionCopy = friendToolIcon(R.drawable.ic_copy_to, "Copier les amis sélectionnés");
+        selectionCopy.setOnClickListener(view -> copySelectedFriends());
+        toolbar.addView(selectionCopy, new LinearLayout.LayoutParams(dp(48), dp(48)));
+        selectionDelete = friendToolIcon(R.drawable.ic_delete, "Supprimer les amis sélectionnés");
+        selectionDelete.setOnClickListener(view -> deleteSelectedFriends());
+        toolbar.addView(selectionDelete, new LinearLayout.LayoutParams(dp(48), dp(48)));
+        selectionEdit.setVisibility(View.GONE);
+        selectionCopy.setVisibility(View.GONE);
+        selectionDelete.setVisibility(View.GONE);
         settingsButton = friendToolIcon(R.drawable.ic_settings, "Paramètres");
         android.graphics.drawable.GradientDrawable settingsCircle = new android.graphics.drawable.GradientDrawable();
         settingsCircle.setShape(android.graphics.drawable.GradientDrawable.OVAL);
@@ -318,15 +336,13 @@ public class MainActivity extends Activity {
                 android.content.res.ColorStateList.valueOf(ui.accentSoft), settingsCircle, null));
         settingsButton.setOnClickListener(view -> showSettings());
         toolbar.addView(settingsButton, new LinearLayout.LayoutParams(dp(48), dp(48)));
-        selectionClose = button("×", () -> { exitSelection(); renderHome(); });
-        selectionClose.setTextSize(26);
-        selectionClose.setContentDescription("Quitter la sélection");
-        styleDrawerButton(selectionClose, false);
+        selectionClose = friendToolIcon(R.drawable.ic_close, "Quitter la sélection");
+        selectionClose.setOnClickListener(view -> { exitSelection(); renderHome(); });
         toolbar.addView(selectionClose, new LinearLayout.LayoutParams(dp(48), dp(48)));
         selectionClose.setVisibility(View.GONE);
         homePanel.addView(toolbar);
 
-        home = new ScrollView(this);
+        home = new SelectionScrollView();
         home.setFillViewport(true);
         home.setBackgroundColor(ui.background);
         homePanel.addView(home, new LinearLayout.LayoutParams(-1, 0, 1));
@@ -391,15 +407,6 @@ public class MainActivity extends Activity {
             count.setBackground(ui.shape(ui.accentSoft, Color.TRANSPARENT));
             count.setPadding(dp(12), dp(6), dp(12), dp(6));
             heading.addView(count);
-            Button select = button("Sélectionner", () -> {
-                selecting = true;
-                selectedFriends.clear();
-                updateSelectionUi();
-                renderFriendResults();
-            });
-            ui.button(select, AppTheme.ButtonStyle.QUIET);
-            select.setVisibility(selecting || active.friends.isEmpty() ? View.GONE : View.VISIBLE);
-            heading.addView(select);
             page.addView(heading);
             gap(page, 12);
             LinearLayout actions = horizontal();
@@ -546,8 +553,8 @@ public class MainActivity extends Activity {
                 friendResults.addView(empty);
             }
         for (Friend friend : matches) {
-            Profile owner = active;
             LinearLayout row = horizontal();
+            row.setTag(friend);
             row.setBackground(ui.shape(ui.surface, ui.border));
             row.setPadding(dp(14), dp(10), dp(8), dp(10));
             LinearLayout labels = vertical();
@@ -564,56 +571,68 @@ public class MainActivity extends Activity {
             row.addView(labels, new LinearLayout.LayoutParams(0, -2, 1));
 
             if (selecting) {
-                CheckBox check = new CheckBox(this);
-                check.setButtonTintList(android.content.res.ColorStateList.valueOf(ui.accent));
-                check.setContentDescription("Sélectionner " + friend.name + ", @" + friend.username);
-                check.setChecked(selectedFriends.contains(friend));
-                check.setOnCheckedChangeListener((v, checked) -> {
-                    if (checked && !selectedFriends.contains(friend)) selectedFriends.add(friend);
-                    else if (!checked) selectedFriends.remove(friend);
+                boolean selected = selectedFriends.contains(friend);
+                TextView indicator = text("✓", 17, true);
+                indicator.setTextColor(ui.onAccent);
+                indicator.setGravity(Gravity.CENTER);
+                indicator.setPadding(0, 0, 0, 0);
+                android.graphics.drawable.GradientDrawable circle = new android.graphics.drawable.GradientDrawable();
+                circle.setShape(android.graphics.drawable.GradientDrawable.OVAL);
+                circle.setColor(ui.accent);
+                indicator.setBackground(circle);
+                indicator.setVisibility(selected ? View.VISIBLE : View.INVISIBLE);
+                indicator.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
+                FrameLayout slot = new FrameLayout(this);
+                FrameLayout.LayoutParams badge = new FrameLayout.LayoutParams(dp(28), dp(28), Gravity.CENTER);
+                slot.addView(indicator, badge);
+                row.addView(slot, new LinearLayout.LayoutParams(dp(48), dp(48)));
+                row.setContentDescription((selected ? "Sélectionné : " : "Non sélectionné : ")
+                        + friend.name + ", @" + friend.username);
+                row.setSelected(selected);
+                row.setOnLongClickListener(view -> {
+                    boolean target = !selectedFriends.contains(friend);
+                    home.armSelectionDrag(target, friend);
+                    row.performClick();
+                    return true;
+                });
+                row.setOnClickListener(v -> {
+                    boolean nowSelected = !selectedFriends.contains(friend);
+                    if (nowSelected) selectedFriends.add(friend);
+                    else selectedFriends.remove(friend);
+                    indicator.setVisibility(nowSelected ? View.VISIBLE : View.INVISIBLE);
+                    row.setSelected(nowSelected);
+                    row.setContentDescription((nowSelected ? "Sélectionné : " : "Non sélectionné : ")
+                            + friend.name + ", @" + friend.username);
                     updateSelectionUi();
                 });
-                row.addView(check, new LinearLayout.LayoutParams(dp(48), dp(48)));
-                row.setOnClickListener(v -> check.setChecked(!check.isChecked()));
             } else {
-            ImageButton prepare = friendToolIcon(R.drawable.ic_flame,
-                    "Préparer la demande pour " + friend.name + ", @" + friend.username);
-            android.graphics.drawable.GradientDrawable circle = new android.graphics.drawable.GradientDrawable();
-            circle.setShape(android.graphics.drawable.GradientDrawable.OVAL);
-            circle.setColor(ui.accentSoft);
-            prepare.setBackground(new android.graphics.drawable.RippleDrawable(
-                    android.content.res.ColorStateList.valueOf(ui.border), circle, null));
-            prepare.setImageTintList(android.content.res.ColorStateList.valueOf(ui.accent));
-            prepare.setOnClickListener(view -> prepare(friend));
-            row.addView(prepare, new LinearLayout.LayoutParams(dp(48), dp(48)));
-            ImageButton more = friendToolIcon(R.drawable.ic_more,
-                    "Options pour " + friend.name + ", @" + friend.username);
-            more.setOnClickListener(view -> showFriendOptions(view, owner, friend));
-            LinearLayout.LayoutParams options = new LinearLayout.LayoutParams(dp(48), dp(48));
-            options.setMarginStart(dp(4));
-            row.addView(more, options);
+                View.OnLongClickListener selectOnLongPress = view -> {
+                    selecting = true;
+                    selectedFriends.clear();
+                    home.armSelectionDrag(true, friend);
+                    selectedFriends.add(friend);
+                    updateSelectionUi();
+                    renderFriendResults();
+                    return true;
+                };
+                row.setOnLongClickListener(selectOnLongPress);
+                ImageButton prepare = friendToolIcon(R.drawable.ic_flame,
+                        "Préparer la demande pour " + friend.name + ", @" + friend.username);
+                android.graphics.drawable.GradientDrawable circle = new android.graphics.drawable.GradientDrawable();
+                circle.setShape(android.graphics.drawable.GradientDrawable.OVAL);
+                circle.setColor(ui.accentSoft);
+                prepare.setBackground(new android.graphics.drawable.RippleDrawable(
+                        android.content.res.ColorStateList.valueOf(ui.border), circle, null));
+                prepare.setImageTintList(android.content.res.ColorStateList.valueOf(ui.accent));
+                prepare.setOnClickListener(view -> prepare(friend));
+                prepare.setOnLongClickListener(selectOnLongPress);
+                row.addView(prepare, new LinearLayout.LayoutParams(dp(48), dp(48)));
+
             }
             LinearLayout.LayoutParams layout = new LinearLayout.LayoutParams(-1, -2);
             layout.bottomMargin = dp(8);
             friendResults.addView(row, layout);
         }
-    }
-
-    private void showFriendOptions(View anchor, Profile owner, Friend friend) {
-        PopupMenu menu = new PopupMenu(this, anchor);
-        menu.getMenu().add("Modifier").setOnMenuItemClickListener(item -> {
-            editFriend(owner, friend);
-            return true;
-        });
-        menu.getMenu().add("Copier vers un autre profil").setOnMenuItemClickListener(item -> {
-            copyFriend(owner, friend);
-            return true;
-        });
-        menu.getMenu().add("Supprimer…").setOnMenuItemClickListener(item -> {
-            removeFriend(owner, friend);
-            return true;
-        });
-        menu.show();
     }
 
     private void editFriend(Profile owner, Friend friend) {
@@ -645,31 +664,64 @@ public class MainActivity extends Activity {
         });
     }
 
-    private void copyFriend(Profile owner, Friend friend) {
+    private void copySelectedFriends() {
+        if (active == null || selectedFriends.isEmpty()) return;
+        List<Friend> selection = new ArrayList<>(selectedFriends);
         List<Profile> destinations = new ArrayList<>();
-        for (Profile profile : profiles) if (profile != owner) destinations.add(profile);
+        for (Profile profile : profiles) if (profile != active) destinations.add(profile);
         if (destinations.isEmpty()) {
             showDialog(new AlertDialog.Builder(this).setTitle("Aucun autre profil")
-                    .setMessage("Ajoute un autre profil depuis le menu ☰ pour y copier cet ami.")
+                    .setMessage("Ajoute un autre profil depuis le menu pour y copier tes amis.")
                     .setPositiveButton("Compris", null));
             return;
         }
-        String[] labels = new String[destinations.size()];
-        for (int i = 0; i < destinations.size(); i++) {
-            Profile destination = destinations.get(i);
-            labels[i] = destination.name + " · @" + destination.username
-                    + (hasFriend(destination, friend.username) ? " — déjà présent" : "");
+        LinearLayout content = vertical();
+        content.setPadding(dp(20), dp(8), dp(20), dp(12));
+        content.addView(mutedText("Choisis le profil vers lequel copier les amis sélectionnés.", 14));
+        gap(content, 12);
+        ProfileBadgeLayout badges = new ProfileBadgeLayout();
+        for (Profile destination : destinations) {
+            int duplicates = 0;
+            for (Friend friend : selection) if (hasFriend(destination, friend.username)) duplicates++;
+            String label = destination.name + (duplicates > 0 ? " · " + duplicates + " déjà présent(s)" : "");
+            Button badge = profileBadge(label);
+            badge.setContentDescription(destination.name + " · @" + destination.username
+                    + (duplicates > 0 ? " · " + duplicates + " déjà présent(s)" : ""));
+            badge.setOnClickListener(view -> {
+                int copied = 0;
+                for (Friend friend : selection) {
+                    if (FriendList.copyTo(friend, destination.friends, Friend::new)) copied++;
+                }
+                if (copied > 0) persist();
+                int skipped = selection.size() - copied;
+                ((AlertDialog) badge.getTag()).dismiss();
+                Toast.makeText(this, copied + " ami(s) copié(s) vers " + destination.name
+                        + (skipped > 0 ? " · " + skipped + " déjà présent(s)" : ""), Toast.LENGTH_LONG).show();
+            });
+            badges.addView(badge);
         }
-        showDialog(new AlertDialog.Builder(this).setTitle("Copier @" + friend.username + " vers…")
+        content.addView(badges);
+        ScrollView scroll = new ScrollView(this);
+        scroll.addView(content);
+        AlertDialog dialog = showDialog(new AlertDialog.Builder(this).setTitle("Copier vers…")
+                .setView(scroll).setNegativeButton("Annuler", null));
+        for (int i = 0; i < badges.getChildCount(); i++) badges.getChildAt(i).setTag(dialog);
+    }
+
+    private void deleteSelectedFriends() {
+        if (active == null || selectedFriends.isEmpty()) return;
+        Profile owner = active;
+        List<Friend> selection = new ArrayList<>(selectedFriends);
+        String label = selection.size() == 1 ? "Supprimer " + selection.get(0).name + " ?"
+                : "Supprimer " + selection.size() + " amis ?";
+        showDialog(new AlertDialog.Builder(this).setTitle(label)
+                .setMessage("Cette action est définitive.")
                 .setNegativeButton("Annuler", null)
-                .setItems(labels, (dialog, index) -> {
-                    Profile destination = destinations.get(index);
-                    if (!FriendList.copyTo(friend, destination.friends, Friend::new)) {
-                        Toast.makeText(this, "Cet ami est déjà présent dans ce profil.", Toast.LENGTH_SHORT).show();
-                        return;
-                    }
+                .setPositiveButton("Supprimer", (dialog, which) -> {
+                    owner.friends.removeAll(selection);
                     persist();
-                    Toast.makeText(this, "Ami copié vers " + destination.name, Toast.LENGTH_SHORT).show();
+                    exitSelection();
+                    renderHome();
                 }));
     }
 
@@ -677,9 +729,11 @@ public class MainActivity extends Activity {
         LinearLayout content = vertical();
         content.setPadding(dp(24), dp(8), dp(24), dp(16));
         String[][] steps = {
-                {"1. Choisis ton profil", "Ouvre ☰ pour créer ou sélectionner un profil. Le menu ⋮ permet de le modifier."},
-                {"2. Prépare une demande", "Ajoute un ami ou copie une liste, puis touche la flamme à droite de son nom."},
-                {"3. Vérifie et envoie", "Relis le formulaire Snapchat, complète le CAPTCHA si demandé, puis envoie toi-même."}
+                {"1. Prépare ton profil", "Ouvre ☰ pour créer ou choisir un profil Snapchat. Ajoute tes amis ou importe-les depuis un autre profil."},
+                {"2. Choisis les amis", "Pour une demande, touche la flamme d’un ami. Pour plusieurs, maintiens un ami appuyé, puis touche ou parcours les autres en gardant le doigt appuyé. La barre supérieure permet aussi de modifier, copier ou supprimer la sélection."},
+                {"3. Vérifie chaque demande", "L’application prépare le formulaire officiel d’assistance pour chaque ami. Relis les informations, complète-les si nécessaire et appuie toi-même sur Envoyer."},
+                {"4. Poursuis à ton rythme", "Dans les paramètres ⚙, choisis le passage automatique ou manuel au formulaire suivant, ainsi que le préremplissage et le centrage. En mode manuel, Suivant peut passer un formulaire sans l’envoyer."},
+                {"Vérification CAPTCHA", "Snapchat peut demander une vérification : termine-la sur la page et appuie à nouveau sur Envoyer si nécessaire. Avant de réessayer, vérifie si la demande a été reçue. Aucun réglage ne garantit l’absence de CAPTCHA."}
         };
         for (String[] step : steps) {
             content.addView(text(step[0], 16, true));
@@ -755,7 +809,8 @@ public class MainActivity extends Activity {
         }
         for (Profile profile : profiles) {
             boolean selected = profile == active;
-            Button choice = button((selected ? "✓  " : "") + profile.name + "\n@" + profile.username, () -> {
+            Button choice = profileBadge((selected ? "✓  " : "") + profile.name + "\n@" + profile.username);
+            choice.setOnClickListener(view -> {
                 active = profile;
                 persist();
                 renderHome();
@@ -767,12 +822,19 @@ public class MainActivity extends Activity {
             choice.setSelected(selected);
             choice.setContentDescription(profile.name + ", @" + profile.username
                     + (selected ? ", profil actif" : ""));
-            styleDrawerButton(choice, selected);
+            if (selected) {
+                choice.setBackground(new android.graphics.drawable.RippleDrawable(
+                        android.content.res.ColorStateList.valueOf(ui.accentSoft),
+                        ui.shape(ui.accent, ui.accent), null));
+                choice.setTextColor(ui.onAccent);
+            }
             LinearLayout.LayoutParams row = new LinearLayout.LayoutParams(-1, -2);
             row.bottomMargin = dp(8);
             choice.setMinHeight(dp(68));
             LinearLayout profileRow = horizontal();
-            profileRow.addView(choice, new LinearLayout.LayoutParams(0, -2, 1));
+            LinearLayout badgeContainer = horizontal();
+            badgeContainer.addView(choice, new LinearLayout.LayoutParams(-2, -2));
+            profileRow.addView(badgeContainer, new LinearLayout.LayoutParams(0, -2, 1));
             Button options = new Button(this);
             options.setText("⋮");
             options.setTextSize(24);
@@ -841,28 +903,68 @@ public class MainActivity extends Activity {
                 descriptionField.setVisibility(checked ? View.VISIBLE : View.GONE));
         ScrollView scroll = new ScrollView(this);
         scroll.addView(fields);
-        showDialog(new AlertDialog.Builder(this)
+        AlertDialog dialog = showDialog(new AlertDialog.Builder(this)
                 .setTitle(adding ? "Nouveau preset" : "Modifier le preset")
                 .setView(scroll)
                 .setNegativeButton("Annuler", null)
-                .setPositiveButton("Enregistrer", (dialog, which) -> {
-                    if (blank(name) || blank(username) || blank(email) || blank(phone)) {
-                        Toast.makeText(this, "Tous les champs sauf la description sont nécessaires.", Toast.LENGTH_LONG).show();
-                        return;
+                .setPositiveButton("Enregistrer", null));
+        dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(view -> {
+            if (blank(name) || blank(username) || blank(email) || blank(phone)) {
+                Toast.makeText(this, "Tous les champs sauf la description sont nécessaires.", Toast.LENGTH_LONG).show();
+                return;
+            }
+            boolean test = adding && name.getText().toString().equals("test")
+                    && username.getText().toString().equals("test")
+                    && email.getText().toString().equals("test")
+                    && phone.getText().toString().equals("test");
+            int count = test ? TestProfiles.count(value(description)) : 0;
+            if (test && count < 0) {
+                descriptionEnabled.setChecked(true);
+                description.setError("Indique un nombre entier entre 1 et " + TestProfiles.MAX_FRIENDS + ", ou laisse vide pour 10 amis.");
+                description.requestFocus();
+                return;
+            }
+            candidate.name = value(name);
+            candidate.username = value(username);
+            candidate.email = value(email);
+            candidate.phone = value(phone);
+            candidate.description = value(description);
+            candidate.descriptionEnabled = descriptionEnabled.isChecked();
+            if (test) {
+                SharedPreferences preferences = getSharedPreferences(PREFERENCES_FILE, MODE_PRIVATE);
+                long number = preferences.getLong("testProfileNumber", 0);
+                for (Profile profile : profiles) {
+                    String existing = profile.name.toLowerCase(java.util.Locale.ROOT);
+                    if (existing.matches("test[0-9]+")) {
+                        try { number = Math.max(number, Long.parseLong(existing.substring(4))); }
+                        catch (NumberFormatException ignored) { /* Too large to be generated. */ }
                     }
-                    candidate.name = value(name);
-                    candidate.username = value(username);
-                    candidate.email = value(email);
-                    candidate.phone = value(phone);
-                    candidate.description = value(description);
-                    candidate.descriptionEnabled = descriptionEnabled.isChecked();
-                    if (adding) {
-                        profiles.add(candidate);
-                        active = candidate;
+                }
+                boolean collision;
+                do {
+                    number++;
+                    String proposed = "test" + number;
+                    collision = false;
+                    for (Profile profile : profiles) {
+                        if (profile.name.equalsIgnoreCase(proposed)) { collision = true; break; }
                     }
-                    persist();
-                    renderHome();
-                }));
+                } while (collision);
+                candidate.name = "test" + number;
+                candidate.description = "";
+                candidate.descriptionEnabled = false;
+                for (String pseudo : TestProfiles.usernames(count, new java.util.Random())) {
+                    candidate.friends.add(new Friend(pseudo, pseudo));
+                }
+                preferences.edit().putLong("testProfileNumber", number).apply();
+            }
+            if (adding) {
+                profiles.add(candidate);
+                active = candidate;
+            }
+            persist();
+            dialog.dismiss();
+            renderHome();
+        });
     }
 
     private void addFriend() {
@@ -892,6 +994,16 @@ public class MainActivity extends Activity {
         return FriendList.containsUsername(p.friends, username, null);
     }
 
+    private Button profileBadge(String label) {
+        Button badge = button(label, () -> {});
+        badge.setBackground(new android.graphics.drawable.RippleDrawable(
+                android.content.res.ColorStateList.valueOf(ui.accentSoft),
+                ui.shape(ui.accentSoft, ui.accent), null));
+        badge.setTextColor(ui.accent);
+        badge.setElevation(dp(2));
+        return badge;
+    }
+
     private void copyFriends() {
         if (active == null) return;
         List<Profile> others = new ArrayList<>();
@@ -906,12 +1018,7 @@ public class MainActivity extends Activity {
         gap(content, 12);
         ProfileBadgeLayout badges = new ProfileBadgeLayout();
         for (Profile source : others) {
-            Button badge = button(source.name, () -> {});
-            badge.setBackground(new android.graphics.drawable.RippleDrawable(
-                    android.content.res.ColorStateList.valueOf(ui.accentSoft),
-                    ui.shape(ui.accentSoft, ui.accent), null));
-            badge.setTextColor(ui.accent);
-            badge.setElevation(dp(2));
+            Button badge = profileBadge(source.name);
             badge.setOnClickListener(view -> {
                 AlertDialog dialog = (AlertDialog) badge.getTag();
                 dialog.dismiss();
@@ -1023,16 +1130,6 @@ public class MainActivity extends Activity {
         }
     }
 
-    private void removeFriend(Profile owner, Friend f) {
-        showDialog(new AlertDialog.Builder(this).setTitle("Supprimer " + f.name + " ?")
-                .setNegativeButton("Annuler", null)
-                .setPositiveButton("Supprimer", (dialog, which) -> {
-                    owner.friends.remove(f);
-                    persist();
-                    renderHome();
-                }));
-    }
-
     private void confirmDeleteProfile(Profile toDelete) {
         showDialog(new AlertDialog.Builder(this).setTitle("Supprimer le profil " + toDelete.name + " ?")
                 .setMessage("@" + toDelete.username + "\nCela supprimera aussi sa liste locale d’amis. Cette action est définitive.")
@@ -1053,6 +1150,15 @@ public class MainActivity extends Activity {
     private void updateSelectionUi() {
         drawerLayout.setDrawerLockMode(selecting ? DrawerLayout.LOCK_MODE_LOCKED_CLOSED : DrawerLayout.LOCK_MODE_UNLOCKED);
         selectionClose.setVisibility(selecting ? View.VISIBLE : View.GONE);
+        toolbarTitle.setText(selecting ? selectedFriends.size() + " sélectionné(s)" : "Streak keeper");
+        toolbarTitle.setTextSize(selecting ? 16 : 22);
+        selectionEdit.setVisibility(selecting && selectedFriends.size() == 1 ? View.VISIBLE : View.GONE);
+        selectionCopy.setVisibility(selecting ? View.VISIBLE : View.GONE);
+        selectionDelete.setVisibility(selecting ? View.VISIBLE : View.GONE);
+        selectionCopy.setEnabled(!selectedFriends.isEmpty());
+        selectionDelete.setEnabled(!selectedFriends.isEmpty());
+        selectionCopy.setAlpha(selectedFriends.isEmpty() ? .4f : 1f);
+        selectionDelete.setAlpha(selectedFriends.isEmpty() ? .4f : 1f);
         menuButton.setVisibility(selecting ? View.GONE : View.VISIBLE);
         settingsButton.setVisibility(selecting ? View.GONE : View.VISIBLE);
         selectionBar.setVisibility(selecting ? View.VISIBLE : View.GONE);
@@ -1063,8 +1169,153 @@ public class MainActivity extends Activity {
 
     private void exitSelection() {
         selecting = false;
+        if (home != null) home.stopSelectionDrag();
         selectedFriends.clear();
         if (selectionBar != null) updateSelectionUi();
+    }
+
+    private final class SelectionScrollView extends ScrollView {
+        private boolean armed, dragging, selectValue;
+        private float downX, downY, pointerX, pointerY, scrollRemainder;
+        private long lastFrame;
+        private final List<Friend> originalSelection = new ArrayList<>();
+        private Friend anchor, endpoint;
+        private final Runnable scrollSelection = new Runnable() {
+            @Override public void run() {
+                if (!dragging || !selecting) return;
+                int[] position = new int[2];
+                getLocationOnScreen(position);
+                float y = pointerY - position[1];
+                float edge = dp(96);
+                float strength = y < edge ? -Math.min(1f, (edge - y) / edge)
+                        : y > getHeight() - edge ? Math.min(1f, (y - (getHeight() - edge)) / edge) : 0;
+                long now = android.os.SystemClock.uptimeMillis();
+                float seconds = Math.min(0.05f, (now - lastFrame) / 1000f);
+                lastFrame = now;
+                scrollRemainder += strength * dp(1200) * seconds;
+                int delta = (int) scrollRemainder;
+                scrollRemainder -= delta;
+                if (delta != 0) {
+                    int before = getScrollY();
+                    scrollBy(0, delta);
+                    if (getScrollY() != before) selectUnderPointer();
+                }
+                postOnAnimation(this);
+            }
+        };
+
+        SelectionScrollView() { super(MainActivity.this); }
+
+        void armSelectionDrag(boolean select, Friend start) {
+            armed = true;
+            selectValue = select;
+            anchor = start;
+            endpoint = start;
+            originalSelection.clear();
+            originalSelection.addAll(selectedFriends);
+        }
+
+        void stopSelectionDrag() {
+            armed = false;
+            dragging = false;
+            removeCallbacks(scrollSelection);
+            scrollRemainder = 0;
+            originalSelection.clear();
+            anchor = null;
+            endpoint = null;
+        }
+
+        private void selectUnderPointer() {
+            if (friendResults == null) return;
+            int[] position = new int[2];
+            getLocationOnScreen(position);
+            if (pointerX < position[0] || pointerX >= position[0] + getWidth()) return;
+            float hitY = Math.max(position[1], Math.min(pointerY, position[1] + getHeight() - 1));
+            for (int i = 0; i < friendResults.getChildCount(); i++) {
+                View row = friendResults.getChildAt(i);
+                if (!(row.getTag() instanceof Friend)) continue;
+                row.getLocationOnScreen(position);
+                if (pointerX >= position[0] && pointerX < position[0] + row.getWidth()
+                        && hitY >= position[1] && hitY < position[1] + row.getHeight()) {
+                    Friend friend = (Friend) row.getTag();
+                    updateRange(friend);
+                    break;
+                }
+            }
+        }
+
+        private void updateRange(Friend current) {
+            if (current == endpoint) return;
+            int start = -1, end = -1, previousEnd = -1;
+            for (int i = 0; i < friendResults.getChildCount(); i++) {
+                Object friend = friendResults.getChildAt(i).getTag();
+                if (friend == anchor) start = i;
+                if (friend == current) end = i;
+                if (friend == endpoint) previousEnd = i;
+            }
+            if (start < 0 || end < 0 || previousEnd < 0) return;
+            endpoint = current;
+            int first = Math.min(start, end), last = Math.max(start, end);
+            int previousFirst = Math.min(start, previousEnd), previousLast = Math.max(start, previousEnd);
+            for (int i = 0; i < friendResults.getChildCount(); i++) {
+                View row = friendResults.getChildAt(i);
+                if (!(row.getTag() instanceof Friend)) continue;
+                Friend friend = (Friend) row.getTag();
+                boolean inRange = i >= first && i <= last;
+                boolean wasInRange = i >= previousFirst && i <= previousLast;
+                if (!inRange && !wasInRange) continue;
+                boolean selected = inRange ? selectValue : !selectValue;
+                if (selectedFriends.contains(friend) != selected) row.performClick();
+            }
+            // Keep the original order for friends selected before this gesture.
+            List<Friend> ordered = new ArrayList<>();
+            for (Friend friend : originalSelection) if (selectedFriends.contains(friend)) ordered.add(friend);
+            for (Friend friend : selectedFriends) if (!ordered.contains(friend)) ordered.add(friend);
+            selectedFriends.clear();
+            selectedFriends.addAll(ordered);
+        }
+
+        @Override public boolean dispatchTouchEvent(MotionEvent event) {
+            int action = event.getActionMasked();
+            if (action == MotionEvent.ACTION_DOWN) {
+                stopSelectionDrag();
+                downX = event.getRawX();
+                downY = event.getRawY();
+            } else if (action == MotionEvent.ACTION_MOVE && armed) {
+                float previousX = dragging ? pointerX : downX;
+                float previousY = dragging ? pointerY : downY;
+                pointerX = event.getRawX();
+                pointerY = event.getRawY();
+                if (!dragging && Math.hypot(pointerX - downX, pointerY - downY)
+                        > android.view.ViewConfiguration.get(getContext()).getScaledTouchSlop()) {
+                    dragging = true;
+                    MotionEvent cancel = MotionEvent.obtain(event);
+                    cancel.setAction(MotionEvent.ACTION_CANCEL);
+                    super.dispatchTouchEvent(cancel);
+                    cancel.recycle();
+                    lastFrame = android.os.SystemClock.uptimeMillis();
+                    postOnAnimation(scrollSelection);
+                }
+                if (dragging) {
+                    float endX = pointerX, endY = pointerY;
+                    int steps = Math.max(1, (int) Math.ceil(Math.hypot(endX - previousX, endY - previousY) / dp(12)));
+                    for (int step = 1; step <= steps; step++) {
+                        pointerX = previousX + (endX - previousX) * step / steps;
+                        pointerY = previousY + (endY - previousY) * step / steps;
+                        selectUnderPointer();
+                    }
+                    return true;
+                }
+            } else if (action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_CANCEL
+                    || action == MotionEvent.ACTION_POINTER_DOWN) {
+                if (dragging) {
+                    stopSelectionDrag();
+                    return true;
+                }
+                stopSelectionDrag();
+            }
+            return super.dispatchTouchEvent(event);
+        }
     }
 
     private void showSettings() {
