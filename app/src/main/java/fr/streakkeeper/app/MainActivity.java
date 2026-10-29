@@ -1216,26 +1216,33 @@ public class MainActivity extends Activity {
     private void chooseImportSource() {
         LinearLayout content = vertical();
         content.setPadding(dp(20), dp(8), dp(20), dp(12));
+        content.addView(mutedText("Choisir la source des amis à ajouter au profil actif.", 14));
+        gap(content, 12);
         Button profile = button("Depuis un autre profil", () -> {});
         content.addView(profile, new LinearLayout.LayoutParams(-1, -2));
         gap(content, 8);
-        LinearLayout row = horizontal();
         Button snapchat = button("Depuis un fichier JSON ou ZIP", () -> {});
-        row.addView(snapchat, new LinearLayout.LayoutParams(0, -2, 1));
-        Button info = button("ⓘ", () -> showDialog(new AlertDialog.Builder(this)
-                .setTitle("Exporter ses données Snapchat")
-                .setMessage("Sur accounts.snapchat.com, ouvre « Mes données ». Sélectionne « Données utilisateur » et « Exporter des fichiers JSON », puis demande et télécharge l’export ZIP. Choisis JSON : l’application lit ce format structuré pour identifier les amis et leurs pseudos ; le format HTML n’est pas pris en charge. Les données sont lues localement sur ton téléphone.")
-                .setPositiveButton("Compris", null)));
+        content.addView(snapchat, new LinearLayout.LayoutParams(-1, -2));
+        gap(content, 12);
+        LinearLayout actions = horizontal();
+        Button info = button("ⓘ", this::showImportHelp);
         ui.button(info, AppTheme.ButtonStyle.QUIET);
         info.setPadding(0, 0, 0, 0);
-        info.setTextSize(20);
+        info.setTextSize(22);
         info.setTextColor(ui.muted);
-        info.setContentDescription("Comment obtenir l’export Snapchat");
-        info.setTooltipText("Comment obtenir l’export Snapchat");
-        row.addView(info, new LinearLayout.LayoutParams(dp(48), dp(48)));
-        content.addView(row);
+        info.setContentDescription("Comprendre les options d’importation");
+        info.setTooltipText("Comprendre les options d’importation");
+        actions.addView(info, new LinearLayout.LayoutParams(dp(48), dp(48)));
+        actions.addView(new View(this), new LinearLayout.LayoutParams(0, 1, 1));
+        Button cancel = button("Annuler", () -> {});
+        ui.button(cancel, AppTheme.ButtonStyle.QUIET);
+        actions.addView(cancel);
+        content.addView(actions);
+        ScrollView scroll = new ScrollView(this);
+        scroll.addView(content);
         AlertDialog dialog = showDialog(new AlertDialog.Builder(this).setTitle("Importer des amis")
-                .setView(content).setNegativeButton("Annuler", null));
+                .setView(scroll));
+        cancel.setOnClickListener(view -> dialog.dismiss());
         profile.setOnClickListener(view -> { dialog.dismiss(); copyFriends(); });
         snapchat.setOnClickListener(view -> {
             dialog.dismiss();
@@ -1251,6 +1258,48 @@ public class MainActivity extends Activity {
                 Toast.makeText(this, "Aucun sélecteur de fichiers disponible.", Toast.LENGTH_LONG).show();
             }
         });
+    }
+
+    private void showImportHelp() {
+        LinearLayout content = vertical();
+        content.setPadding(dp(20), dp(8), dp(20), dp(16));
+        content.addView(mutedText("Deux sources permettent d’ajouter des amis au profil actif.", 14));
+        gap(content, 12);
+        addImportHelpSection(content, "Depuis un autre profil",
+                "Copie des amis déjà enregistrés dans un autre profil de l’application, sur cet appareil. "
+                + "Choisir le profil source, puis sélectionner les amis à copier. Le profil source reste inchangé.");
+        gap(content, 10);
+        addImportHelpSection(content, "Depuis un fichier JSON ou ZIP",
+                "Fichier Streak keeper : dans les paramètres, utiliser « Exporter les amis du profil actif », "
+                + "puis sélectionner le fichier JSON enregistré. Ce fichier permet aussi le transfert entre appareils.\n\n"
+                + "Export Snapchat :\n"
+                + "1. Sur accounts.snapchat.com, ouvrir « Mes données ».\n"
+                + "2. Sélectionner « Données utilisateur » et « Exporter des fichiers JSON », puis demander l’export.\n"
+                + "3. Attendre la notification de Snapchat, puis télécharger le ZIP et le sélectionner dans l’application.\n\n"
+                + "Délai indicatif : une petite demande peut être prête en une dizaine de minutes ou en moins d’une heure. "
+                + "Snapchat vise un délai de 7 jours, mais les exports volumineux peuvent prendre plus longtemps.\n\n"
+                + "Le format JSON fournit les données structurées nécessaires à l’import ; le format HTML seul n’est pas pris en charge.");
+        gap(content, 10);
+        addImportHelpSection(content, "Sélection et confidentialité",
+                "Les amis sont sélectionnés avant l’importation. Les pseudos déjà présents dans le profil actif ne sont pas remplacés. "
+                + "Les fichiers sont analysés localement, sans envoi vers un serveur.");
+        ScrollView scroll = new ScrollView(this);
+        scroll.setFillViewport(true);
+        scroll.addView(content);
+        showDialog(new AlertDialog.Builder(this).setTitle("Comment importer des amis ?")
+                .setView(scroll).setPositiveButton("Compris", null));
+    }
+
+    private void addImportHelpSection(LinearLayout parent, String title, String description) {
+        LinearLayout section = vertical();
+        section.setBackground(ui.shape(ui.background, ui.border));
+        section.setPadding(dp(16), dp(12), dp(16), dp(14));
+        TextView heading = text(title, 16, true);
+        heading.setTextColor(ui.accentText);
+        section.addView(heading);
+        gap(section, 4);
+        section.addView(mutedText(description, 14));
+        parent.addView(section, new LinearLayout.LayoutParams(-1, -2));
     }
 
     @Override protected void onActivityResult(int requestCode, int resultCode, Intent data) {
