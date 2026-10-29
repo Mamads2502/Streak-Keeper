@@ -209,6 +209,7 @@ final class AppTheme {
         String palette = "--sk-bg:" + hex(background) + ";--sk-surface:" + hex(surface)
                 + ";--sk-text:" + hex(text) + ";--sk-muted:" + hex(muted)
                 + ";--sk-border:" + hex(border) + ";--sk-accent:" + hex(accentText)
+                + ";--sk-accent-fill:" + hex(accent)
                 + ";--sk-on-accent:" + hex(onAccent) + ";";
         return ":root{color-scheme:" + (dark ? "dark;" : "light;") + palette + "}"
                 + "body{background:var(--sk-bg)!important;color:var(--sk-text)!important;"
@@ -239,6 +240,8 @@ final class AppTheme {
                 + "#new_request [role=combobox]{background:var(--sk-surface)!important;"
                 + "color:var(--sk-text)!important;}"
                 + "#new_request :is(input,textarea)::placeholder{color:var(--sk-muted)!important;}"
+                + "#new_request input[type=submit],#new_request button[type=submit]{"
+                + "background:var(--sk-accent-fill)!important;color:var(--sk-on-accent)!important;}"
                 : "");
     }
 
