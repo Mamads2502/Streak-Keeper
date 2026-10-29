@@ -6,10 +6,11 @@ import tempfile
 
 root = Path(__file__).resolve().parents[1]
 source = (root / 'app/src/main/java/fr/streakkeeper/app/FormNavigation.java').read_text()
-script = source.split('static final String SCRIPT = """', 1)[1].split('""";', 1)[0]
+script = source.split('static final String SCRIPT = """', 1)[1].split('""";', 1)[0].replace('__STREAK_SCROLL_DONE__', json.dumps('done'))
 harness = r'''
 function run(options = {}) {
-    let queue = [], calls = [], listeners = {}, inserted = [];
+    let queue = [], calls = [], listeners = {}, inserted = [], signals = [];
+    globalThis.console = {log: value => signals.push({value, afterScroll:calls.length})};
     const element = (name, invalid = false) => ({
         name, nodeType:1, parentElement:null, value:'', disabled:false, style:{},
         validity:{valid:!invalid},
@@ -45,7 +46,7 @@ function run(options = {}) {
     let limit=30;
     while(queue.length && limit--) queue.shift()();
     if (limit<=0) throw Error('Polling did not stop');
-    return {calls, inserted, listeners};
+    return {calls, inserted, listeners, signals};
 }
 function check(name, options, expected) {
     const r=run(options);
@@ -54,6 +55,9 @@ function check(name, options, expected) {
     if (Object.keys(r.listeners).length) throw Error(name+': listeners not cleaned up');
     if (expected==='submit' && r.inserted.length!==1) throw Error('Missing centering space');
     if (expected && r.calls[0].behavior!=='instant') throw Error('Scroll must be immediate');
+    const expectedSignals = options.touch || options.external ? 0 : 1;
+    if (r.signals.length !== expectedSignals || (expected && r.signals[0].afterScroll !== 1))
+        throw Error(name+': incorrect completion signal '+JSON.stringify(r.signals));
     print('OK '+name);
 }
 check('Submit centered once',{},'submit');

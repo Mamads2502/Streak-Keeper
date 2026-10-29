@@ -84,13 +84,14 @@ final class FormNavigation {
                         }
                         cancel();
                         el.scrollIntoView({behavior: 'instant', block:'center', inline:'nearest'});
+                        console.log(__STREAK_SCROLL_DONE__);
                         return;
                     }
                 } else {
                     previous = null;
                     stable = 0;
                 }
-                if (attempts >= 12) { cancel(); return; }
+                if (attempts >= 12) { cancel(); console.log(__STREAK_SCROLL_DONE__); return; }
                 timer = setTimeout(sample, 250);
             }
             timer = setTimeout(sample, 250);

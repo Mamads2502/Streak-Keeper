@@ -58,6 +58,9 @@ public class MainActivity extends Activity {
     private AppTheme ui;
     private TextView browserContext;
     private boolean formTouched;
+    private boolean formInteractionLocked;
+    private String scrollDoneMarker;
+    private int interactionLockGeneration;
     private int formGeneration;
     private FriendList.Order friendOrder = FriendList.Order.OLDEST;
     private String friendQuery = "";
@@ -204,6 +207,7 @@ public class MainActivity extends Activity {
             }
             cancelFormScroll();
             formTouched = false;
+            lockFormInteractions();
             fillForm(0);
         });
         LinearLayout.LayoutParams backParams = new LinearLayout.LayoutParams(0, -2, 1);
@@ -222,9 +226,12 @@ public class MainActivity extends Activity {
         browser = new WebView(this);
         browser.setBackgroundColor(ui.surface);
         browser.setOnTouchListener((view, event) -> {
+            if (formInteractionLocked) return true;
             if (event.getActionMasked() == MotionEvent.ACTION_DOWN) formTouched = true;
             return false; // Keep normal WebView gestures and clicks.
         });
+        browser.setOnGenericMotionListener((view, event) -> formInteractionLocked);
+        browser.setOnKeyListener((view, keyCode, event) -> formInteractionLocked);
         WebSettings webSettings = browser.getSettings();
         webSettings.setJavaScriptEnabled(true); // The real help form needs JavaScript.
         webSettings.setDomStorageEnabled(true);
@@ -235,6 +242,10 @@ public class MainActivity extends Activity {
         CookieManager.getInstance().setAcceptThirdPartyCookies(browser, true);
         browser.setWebChromeClient(new WebChromeClient() {
             @Override public boolean onConsoleMessage(android.webkit.ConsoleMessage message) {
+                if (formInteractionLocked && scrollDoneMarker != null && scrollDoneMarker.equals(message.message())) {
+                    unlockFormInteractions();
+                    return true;
+                }
                 if (pendingFriend != null && !submissionObserved && submitMarker != null
                         && submitMarker.equals(message.message())) {
                     submissionObserved = true;
@@ -258,18 +269,23 @@ public class MainActivity extends Activity {
                         installSubmitObserver();
                         fillForm(0);
                     }
+                } else if (pendingFriend != null && formInteractionLocked) {
+                    cancelFormScroll();
                 }
             }
 
             @Override public void onReceivedHttpError(WebView view, WebResourceRequest request,
                                                        android.webkit.WebResourceResponse response) {
-                if (request.isForMainFrame() && pendingFriend != null)
+                if (request.isForMainFrame() && pendingFriend != null) {
+                    cancelFormScroll();
                     setBrowserStatus("Erreur du site. Vérifie si la demande a été reçue avant de réessayer.");
+                }
             }
 
             @Override public void onReceivedError(WebView view, WebResourceRequest request,
                                                    WebResourceError error) {
                 if (request.isForMainFrame()) {
+                    cancelFormScroll();
                     setBrowserStatus("Chargement impossible. Vérifie Internet ou ouvre le site plus tard.");
                 }
             }
@@ -1069,6 +1085,7 @@ public class MainActivity extends Activity {
                 .hideSoftInputFromWindow(home.getWindowToken(), 0);
         cancelFormScroll();
         formTouched = false;
+        lockFormInteractions();
         pendingProfile = active;
         pendingFriend = friend;
         browserContext.setText(active.name + " · @" + friend.username + " · " + (requestIndex + 1) + "/" + requestQueue.size());
@@ -1180,17 +1197,42 @@ public class MainActivity extends Activity {
                     }, 800);
                 } else {
                     setBrowserStatus("");
-                    if (!formTouched && isSupportForm(browser.getUrl())) {
-                        browser.evaluateJavascript(FormNavigation.SCRIPT, null);
+                    if (formInteractionLocked && !formTouched && isSupportForm(browser.getUrl())) {
+                        browser.evaluateJavascript(FormNavigation.SCRIPT.replace(
+                                "__STREAK_SCROLL_DONE__", JSONObject.quote(scrollDoneMarker)), null);
+                    } else {
+                        unlockFormInteractions();
                     }
                 }
             } catch (Exception e) {
+                unlockFormInteractions();
                 setBrowserStatus("Préremplissage indisponible : remplis le formulaire manuellement.");
             }
         });
     }
 
+    private void lockFormInteractions() {
+        formInteractionLocked = true;
+        scrollDoneMarker = "streak-scroll-done-" + UUID.randomUUID();
+        int lockGeneration = ++interactionLockGeneration;
+        browser.clearFocus();
+        browser.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS);
+        browser.postDelayed(() -> {
+            if (formInteractionLocked && interactionLockGeneration == lockGeneration) {
+                cancelFormScroll();
+            }
+        }, 8000);
+    }
+
+    private void unlockFormInteractions() {
+        formInteractionLocked = false;
+        scrollDoneMarker = null;
+        interactionLockGeneration++;
+        browser.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_AUTO);
+    }
+
     private void cancelFormScroll() {
+        unlockFormInteractions();
         formGeneration++;
         if (browser != null) browser.evaluateJavascript(FormNavigation.CANCEL, null);
     }
