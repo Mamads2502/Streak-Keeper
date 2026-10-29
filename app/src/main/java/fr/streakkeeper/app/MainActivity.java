@@ -31,6 +31,8 @@ import android.widget.LinearLayout;
 import android.widget.PopupMenu;
 import android.widget.ScrollView;
 import android.widget.TextView;
+import android.widget.Switch;
+import android.content.res.ColorStateList;
 import android.widget.Toast;
 
 import androidx.drawerlayout.widget.DrawerLayout;
@@ -1066,23 +1068,82 @@ public class MainActivity extends Activity {
     }
 
     private void showSettings() {
-        LinearLayout options = vertical();
-        options.setPadding(dp(20), dp(8), dp(20), dp(8));
-        addSetting(options, "Passage automatique au formulaire suivant", "automaticAdvance");
-        addSetting(options, "Préremplissage automatique", "automaticFill");
-        addSetting(options, "Centrage automatique", "automaticCenter");
+        LinearLayout page = vertical();
+        page.setPadding(dp(20), dp(8), dp(20), dp(24));
+        page.setBackgroundColor(ui.background);
+        LinearLayout navigation = settingsSection(page, "Enchaînement", "Choisis comment passer d’un ami à l’autre.");
+        addSetting(navigation, "Formulaire suivant automatique",
+                "Passe au suivant après confirmation de réception.", "automaticAdvance",
+                "Quand cette option est activée, le formulaire suivant s’ouvre après la réponse du site. "
+                + "Sinon, utilise Suivant pour avancer à ton rythme, même sans attendre la confirmation. "
+                + "L’envoi de chaque demande reste manuel.");
+
+        gap(page, 20);
+        LinearLayout form = settingsSection(page, "Formulaire", "Adapte la préparation à tes habitudes.");
+        addSetting(form, "Préremplissage automatique",
+                "Renseigne les informations enregistrées pour toi.", "automaticFill",
+                "Les coordonnées du profil et le pseudo de l’ami sont renseignés dans le formulaire. "
+                + "Désactive cette option si tu préfères saisir les informations toi-même. "
+                + "Vérifie toujours le formulaire avant l’envoi.");
+        View divider = new View(this);
+        divider.setBackgroundColor(ui.border);
+        LinearLayout.LayoutParams dividerParams = new LinearLayout.LayoutParams(-1, dp(1));
+        dividerParams.setMargins(dp(16), 0, dp(16), 0);
+        form.addView(divider, dividerParams);
+        addSetting(form, "Centrage automatique",
+                "Affiche directement la partie utile du formulaire.", "automaticCenter",
+                "Après le chargement, la page se place sur le bouton d’envoi ou sur un élément "
+                + "qui demande ton attention, comme une erreur ou une vérification visible. "
+                + "Tu peux désactiver cette option pour parcourir le formulaire toi-même.");
+
+        ScrollView scroll = new ScrollView(this);
+        scroll.setFillViewport(true);
+        scroll.addView(page);
         showDialog(new AlertDialog.Builder(this).setTitle("Paramètres")
-                .setView(options).setPositiveButton("Fermer", null));
+                .setView(scroll).setPositiveButton("Fermer", null));
     }
 
-    private void addSetting(LinearLayout options, String label, String key) {
-        CheckBox option = new CheckBox(this);
-        option.setText(label);
-        option.setChecked(getSharedPreferences(PREFERENCES_FILE, MODE_PRIVATE).getBoolean(key, true));
-        option.setPadding(0, dp(12), 0, dp(12));
-        option.setOnCheckedChangeListener((view, checked) ->
+    private LinearLayout settingsSection(LinearLayout page, String title, String description) {
+        page.addView(text(title, 17, true));
+        TextView subtitle = mutedText(description, 13);
+        page.addView(subtitle);
+        gap(page, 8);
+        LinearLayout section = vertical();
+        section.setBackground(ui.shape(ui.surface, ui.border));
+        page.addView(section, new LinearLayout.LayoutParams(-1, -2));
+        return section;
+    }
+
+    private void addSetting(LinearLayout section, String label, String description, String key, String explanation) {
+        LinearLayout row = horizontal();
+        row.setPadding(dp(16), dp(12), dp(12), dp(12));
+        LinearLayout words = vertical();
+        words.addView(text(label, 15, true));
+        words.addView(mutedText(description, 13));
+        row.addView(words, new LinearLayout.LayoutParams(0, -2, 1));
+
+        Button info = button("ⓘ", () -> showDialog(new AlertDialog.Builder(this)
+                .setTitle(label).setMessage(explanation).setPositiveButton("Compris", null)));
+        ui.button(info, AppTheme.ButtonStyle.QUIET);
+        info.setPadding(0, 0, 0, 0);
+        info.setTextSize(20);
+        info.setTextColor(ui.muted);
+        info.setContentDescription("En savoir plus : " + label);
+        info.setTooltipText("En savoir plus : " + label);
+        row.addView(info, new LinearLayout.LayoutParams(dp(48), dp(48)));
+
+        Switch toggle = new Switch(this);
+        toggle.setContentDescription(label);
+        toggle.setMinWidth(dp(48));
+        toggle.setMinHeight(dp(48));
+        int[][] states = {new int[]{android.R.attr.state_checked}, new int[]{}};
+        toggle.setThumbTintList(new ColorStateList(states, new int[]{ui.accent, ui.surface}));
+        toggle.setTrackTintList(new ColorStateList(states, new int[]{ui.accent, ui.muted}));
+        toggle.setChecked(getSharedPreferences(PREFERENCES_FILE, MODE_PRIVATE).getBoolean(key, true));
+        toggle.setOnCheckedChangeListener((view, checked) ->
                 getSharedPreferences(PREFERENCES_FILE, MODE_PRIVATE).edit().putBoolean(key, checked).apply());
-        options.addView(option, new LinearLayout.LayoutParams(-1, -2));
+        row.addView(toggle, new LinearLayout.LayoutParams(-2, dp(48)));
+        section.addView(row, new LinearLayout.LayoutParams(-1, -2));
     }
 
     private void updateProcedureActions() {
