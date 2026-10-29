@@ -36,6 +36,8 @@ Fonctionnalités présentes dans le code, dont le fonctionnement sur appareil re
 
 ## Décisions techniques actuelles
 
+- `SubmissionPage.java` reconnaît le message de réception et les cadres reCAPTCHA de défi visibles sans accéder au contenu des iframes, sans résoudre de CAPTCHA et sans envoyer de formulaire. La file ne progresse qu’après reconnaissance de la réponse.
+
 - `FriendList.java` isole le filtrage et le tri sans dépendance Android et sans modifier l’ordre des données sauvegardées. Le JSON des amis contient `addedAt` (millisecondes depuis epoch). Les anciens amis sans date gardent la valeur 0 et leur ordre sauvegardé ; les copies prennent la date de leur ajout au profil destinataire. Le tri est stocké sous `friendSort`, la recherche reste temporaire.
 - Android natif en Java 17, interface construite en Java. AndroidX `drawerlayout:1.2.0` gère les gestes, l’animation, le voile et l’accessibilité du tiroir ; l’activité et le stockage existants sont conservés.
 - L’accent se modifie dans `res/values/colors.xml` (`sk_accent`) ; teintes secondaires dérivées et contraste noir/blanc automatique pour les boutons pleins. Les rôles sémantiques préparent de futurs thèmes ; seul le thème clair est implémenté. Sur Android 8.0, la barre de navigation reste foncée pour préserver la lisibilité des icônes système.
@@ -54,7 +56,7 @@ Fonctionnalités présentes dans le code, dont le fonctionnement sur appareil re
 
 - Verrouillage temporaire de la WebView pendant le centrage : à tester sur appareil pour les demandes individuelles et en série, les erreurs réseau, le retour, « Re-remplir » et le délai de sécurité. Le bouton d’envoi est lui aussi bloqué pendant cette courte période.
 
-- Série de demandes : après le clic, recherche pendant 30 secondes d’un message de réception sur le site officiel, sans interrompre immédiatement la requête. L’utilisateur indique que l’enchaînement fonctionne sur son téléphone ; les autres formulations et cas d’erreur restent à vérifier. Si le message n’est pas reconnu, la série s’arrête. Ne pas réessayer sans vérifier si la demande a été reçue. Une rotation ou interruption abandonne la série.
+- Série de demandes : après le clic, recherche du message de réception tant que le formulaire reste ouvert ; le CAPTCHA visible est signalé et résolu manuellement. Après 30 secondes, la surveillance continue à rythme réduit et la progression reste conservée. Si le site demande un nouvel appui sur Envoyer après le CAPTCHA, celui-ci reste manuel. Les CAPTCHA réels, les autres formulations et les cas d’erreur restent à vérifier sur appareil. Ne pas réessayer sans vérifier si la demande a été reçue. Une rotation ou interruption abandonne la série.
 
 - Import sélectif compilé et analysé ; badges, sélection, listes longues et doublons restent à tester sur appareil ou Waydroid.
 

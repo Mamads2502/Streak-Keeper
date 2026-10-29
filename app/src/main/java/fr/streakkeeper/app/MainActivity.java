@@ -91,6 +91,7 @@ public class MainActivity extends Activity {
     private int requestSession;
     private boolean submissionObserved;
     private boolean submissionTransitioned;
+    private boolean captchaWaiting;
     private String submitMarker;
     private LinearLayout selectionBar;
     private Button selectionAction;
@@ -1080,6 +1081,7 @@ public class MainActivity extends Activity {
         requestSession++;
         submissionObserved = false;
         submissionTransitioned = false;
+        captchaWaiting = false;
         submitMarker = "streak-submit-" + UUID.randomUUID();
         ((InputMethodManager) getSystemService(INPUT_METHOD_SERVICE))
                 .hideSoftInputFromWindow(home.getWindowToken(), 0);
@@ -1110,21 +1112,13 @@ public class MainActivity extends Activity {
 
     private void monitorSubmissionResult(int session, int attempt) {
         if (session != requestSession || pendingFriend == null || submissionTransitioned) return;
-        if (attempt >= 60) {
-            setBrowserStatus("Réponse du site non détectée. Vérifie la page et ton e-mail avant de réessayer ; la série est arrêtée.");
-            return;
-        }
         Uri uri = Uri.parse(browser.getUrl() == null ? "" : browser.getUrl());
         boolean official = "https".equals(uri.getScheme()) && "help.snapchat.com".equals(uri.getHost());
         if (official) {
             int generation = formGeneration;
-            browser.evaluateJavascript("(function(){if(!document.body)return false;"
-                    + "let t=(document.body.innerText||'').toLowerCase().normalize('NFD')"
-                    + ".replace(/[\\u0300-\\u036f]/g,'').replace(/\\s+/g,' ');"
-                    + "return /nous avons (?:bien )?(?:pris en compte|recu).{0,100}(?:demande|requete)/.test(t)"
-                    + "|| /(?:votre|ta) (?:demande|requete).{0,100}(?:bien )?(?:prise en compte|recue)/.test(t);})()", result -> {
+            browser.evaluateJavascript(SubmissionPage.SCRIPT, result -> {
                 if (session != requestSession || pendingFriend == null || submissionTransitioned) return;
-                if (generation == formGeneration && "true".equals(result)) {
+                if (generation == formGeneration && "2".equals(result)) {
                     submissionTransitioned = true;
                     if (requestIndex + 1 < requestQueue.size()) {
                         requestIndex++;
@@ -1144,11 +1138,23 @@ public class MainActivity extends Activity {
                         homeButton.setOnClickListener(view -> { finished.dismiss(); showHome(); });
                     }
                 } else {
-                    browser.postDelayed(() -> monitorSubmissionResult(session, attempt + 1), 500);
+                    if (generation == formGeneration && "1".equals(result)) {
+                        if (!captchaWaiting) {
+                            captchaWaiting = true;
+                            unlockFormInteractions();
+                            setBrowserStatus("Vérification CAPTCHA : termine-la sur la page pour poursuivre.");
+                        }
+                    } else if (generation == formGeneration && captchaWaiting) {
+                        captchaWaiting = false;
+                        setBrowserStatus("Vérification terminée ou masquée. Si nécessaire, appuie à nouveau sur Envoyer.");
+                    } else if (attempt == 60 && !captchaWaiting) {
+                        setBrowserStatus("Réponse du site en attente. Vérifie le formulaire et termine toute vérification demandée.");
+                    }
+                    browser.postDelayed(() -> monitorSubmissionResult(session, attempt + 1), attempt < 60 ? 500 : 1000);
                 }
             });
         } else {
-            browser.postDelayed(() -> monitorSubmissionResult(session, attempt + 1), 500);
+            browser.postDelayed(() -> monitorSubmissionResult(session, attempt + 1), attempt < 60 ? 500 : 1000);
         }
     }
 
