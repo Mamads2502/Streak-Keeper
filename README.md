@@ -265,3 +265,7 @@ Les e-mails et téléphones sont enregistrés dans le stockage privé de l'appli
 - [Compiler un APK en ligne de commande](https://developer.android.com/build/building-cmdline)
 - [Tester sur un téléphone Android](https://developer.android.com/studio/run/device)
 - [Créer un téléphone virtuel](https://developer.android.com/studio/run/managing-avds)
+
+### Demandes récentes
+
+Dans Paramètres → Apparence, active « Demandes récentes » pour voir un point vert animé et le temps écoulé à droite du nom de chaque ami pendant 24 heures. L’application enregistre l’heure lorsqu’elle détecte une soumission du formulaire ou, en secours, la réponse de réception du site, même si l’indicateur est désactivé. Le point indique une soumission détectée, pas une confirmation de réception ou de restauration. Le temps écoulé reste annoncé par les lecteurs d’écran. L’animation respecte le réglage système de réduction des animations. La détection dépend du fonctionnement du site Snapchat.

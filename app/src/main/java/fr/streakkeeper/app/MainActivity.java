@@ -113,6 +113,13 @@ public class MainActivity extends Activity {
     private TextView toolbarTitle;
     private Button procedureBack, procedureNext;
     private boolean automaticAdvance, procedureFinished, automaticFill, automaticCenter;
+    private final java.util.Map<Friend, LinearLayout> recentRequestLabels = new java.util.IdentityHashMap<>();
+    private final Runnable recentRequestRefresh = new Runnable() {
+        @Override public void run() {
+            updateRecentRequestLabels();
+            if (home != null) home.postDelayed(this, 15_000);
+        }
+    };
     private WebView browser;
     private View themeCover;
     private TextView browserStatus;
@@ -122,6 +129,7 @@ public class MainActivity extends Activity {
     private int requestIndex;
     private int requestSession;
     private boolean submissionObserved;
+    private boolean requestTimeRecorded;
     private boolean submissionTransitioned;
     private boolean captchaWaiting;
     private String submitMarker;
@@ -132,6 +140,7 @@ public class MainActivity extends Activity {
     static final class Friend implements FriendList.Entry {
         String name, username;
         boolean favorite;
+        long lastRequestAt;
         final long addedAt;
 
         Friend(String name, String username) {
@@ -150,7 +159,7 @@ public class MainActivity extends Activity {
 
         JSONObject json() throws JSONException {
             return new JSONObject().put("name", name).put("username", username).put("addedAt", addedAt)
-                    .put("favorite", favorite);
+                    .put("favorite", favorite).put("lastRequestAt", lastRequestAt);
         }
     }
 
@@ -193,6 +202,7 @@ public class MainActivity extends Activity {
                 if (item != null) {
                     Friend friend = new Friend(item.optString("name"), item.optString("username"), item.optLong("addedAt", 0));
                     friend.favorite = item.optBoolean("favorite", false);
+                    friend.lastRequestAt = Math.max(0, item.optLong("lastRequestAt", 0));
                     p.friends.add(friend);
                 }
             }
@@ -293,6 +303,12 @@ public class MainActivity extends Activity {
                     unlockFormInteractions();
                     return true;
                 }
+                if (pendingFriend != null && submitMarker != null
+                        && (submitMarker + ":submitted").equals(message.message())
+                        && isSupportPage(browser.getUrl())) {
+                    recordRecentRequest();
+                    return true;
+                }
                 if (pendingFriend != null && !submissionObserved && submitMarker != null
                         && submitMarker.equals(message.message())) {
                     submissionObserved = true;
@@ -332,6 +348,9 @@ public class MainActivity extends Activity {
                         }
                     });
                 } else {
+                    if (pendingFriend != null && isSupportPage(url) && !submissionObserved) {
+                        checkReceiptAfterNavigation(view, requestSession, formGeneration);
+                    }
                     if (pendingFriend != null && formInteractionLocked) cancelFormScroll();
                     if (ui.dark && pendingFriend != null && isSupportPage(url)) {
                         int generation = formGeneration;
@@ -657,6 +676,7 @@ public class MainActivity extends Activity {
 
     private void renderFriendResults() {
         if (active == null || friendResults == null) return;
+        recentRequestLabels.clear();
         friendResults.removeAllViews();
         java.util.List<Friend> matches = FriendList.select(active.friends, friendQuery, friendOrder,
                 friend -> !favoritesOnly || friend.favorite);
@@ -696,8 +716,27 @@ public class MainActivity extends Activity {
             TextView username = mutedText("@" + friend.username, 13);
             username.setSingleLine(true);
             username.setEllipsize(TextUtils.TruncateAt.END);
-            labels.addView(name);
+            LinearLayout nameRow = horizontal();
+            nameRow.addView(name, new LinearLayout.LayoutParams(-2, -2));
+            LinearLayout recent = horizontal();
+            RecentRequestDot dot = new RecentRequestDot(this, ui.dark);
+            recent.addView(dot, new LinearLayout.LayoutParams(dp(24), dp(24)));
+            TextView duration = mutedText("", 12);
+            duration.setTextColor(Color.parseColor(ui.dark ? "#63DC91" : "#16803E"));
+            duration.setSingleLine(true);
+            duration.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
+            recent.addView(duration, new LinearLayout.LayoutParams(-2, -2));
+            recentRequestLabels.put(friend, recent);
+            nameRow.addView(recent, new LinearLayout.LayoutParams(-2, -2));
+            labels.addView(nameRow, new LinearLayout.LayoutParams(-1, -2));
             labels.addView(username);
+            labels.addOnLayoutChangeListener((v, left, top, right, bottom, oldLeft, oldTop, oldRight, oldBottom) -> {
+                int statusWidth = recent.getVisibility() == View.GONE ? 0
+                        : Math.max(recent.getMeasuredWidth(), (int) (dp(72) * getResources().getConfiguration().fontScale));
+                int max = Math.max(0, right - left - labels.getPaddingRight() - statusWidth);
+                if (name.getMaxWidth() != max) name.setMaxWidth(max);
+            });
+            updateRecentRequestLabel(friend, recent, System.currentTimeMillis());
             labels.setPadding(0, 0, dp(8), 0);
             row.addView(labels, new LinearLayout.LayoutParams(0, -2, 1));
             if (friend.favorite) {
@@ -1592,6 +1631,9 @@ public class MainActivity extends Activity {
         addThemeOptions(appearance);
         addAccentPalette(appearance);
         addLauncherOptions(appearance);
+        addSetting(appearance, "Demandes récentes", "Affiche les demandes envoyées depuis moins de 24 h.",
+                "showRecentRequests", "Le point vert indique une soumission détectée depuis l’application, "
+                + "pas une confirmation de réception ni une flamme restaurée. L’indicateur disparaît après 24 h.");
         gap(page, 20);
         LinearLayout navigation = settingsSection(page, "Enchaînement", "Choisis comment passer d’un ami à l’autre.");
         addSetting(navigation, "Formulaire suivant automatique",
@@ -2053,9 +2095,12 @@ public class MainActivity extends Activity {
         int[][] states = {new int[]{android.R.attr.state_checked}, new int[]{}};
         toggle.setThumbTintList(new ColorStateList(states, new int[]{ui.accent, ui.surface}));
         toggle.setTrackTintList(new ColorStateList(states, new int[]{ui.accent, ui.muted}));
-        toggle.setChecked(getSharedPreferences(PREFERENCES_FILE, MODE_PRIVATE).getBoolean(key, true));
-        toggle.setOnCheckedChangeListener((view, checked) ->
-                getSharedPreferences(PREFERENCES_FILE, MODE_PRIVATE).edit().putBoolean(key, checked).apply());
+        toggle.setChecked(getSharedPreferences(PREFERENCES_FILE, MODE_PRIVATE)
+                .getBoolean(key, !"showRecentRequests".equals(key)));
+        toggle.setOnCheckedChangeListener((view, checked) -> {
+            getSharedPreferences(PREFERENCES_FILE, MODE_PRIVATE).edit().putBoolean(key, checked).apply();
+            if ("showRecentRequests".equals(key)) updateRecentRequestLabels();
+        });
         row.addView(toggle, new LinearLayout.LayoutParams(-2, dp(48)));
         section.addView(row, new LinearLayout.LayoutParams(-1, -2));
     }
@@ -2100,6 +2145,7 @@ public class MainActivity extends Activity {
     private void prepareCurrent(Friend friend) {
         requestSession++;
         submissionObserved = false;
+        requestTimeRecorded = false;
         submissionTransitioned = false;
         captchaWaiting = false;
         submitMarker = "streak-submit-" + UUID.randomUUID();
@@ -2126,12 +2172,33 @@ public class MainActivity extends Activity {
         String marker = JSONObject.quote(submitMarker);
         browser.evaluateJavascript("(function(){if(window.__streakSubmitObserver)return;"
                 + "window.__streakSubmitObserver=true;let sent=false;"
+                + "document.addEventListener('submit',function(e){"
+                + "if(!e.isTrusted || !e.target || !e.target.querySelector"
+                + " || !e.target.querySelector('#request_custom_fields_24369736'))return;"
+                + "console.log(" + marker + "+':submitted');},true);"
                 + "document.addEventListener('click',function(e){"
                 + "if(sent || !e.isTrusted || !document.getElementById('request_custom_fields_24369736'))return;"
                 + "let target=e.target instanceof Element ? e.target.closest('button, input[type=submit]') : null;"
                 + "if(!target || !target.form || target.disabled)return;"
                 + "if(target.tagName==='BUTTON' && target.type!=='submit')return;"
                 + "sent=true;console.log(" + marker + ");},true);})()", null);
+    }
+
+    private void recordRecentRequest() {
+        if (pendingFriend == null || requestTimeRecorded) return;
+        pendingFriend.lastRequestAt = System.currentTimeMillis();
+        requestTimeRecorded = true;
+        persist();
+        updateRecentRequestLabels();
+    }
+
+    private void checkReceiptAfterNavigation(WebView view, int session, int generation) {
+        view.evaluateJavascript(SubmissionPage.SCRIPT, result -> {
+            if (session == requestSession && generation == formGeneration && pendingFriend != null
+                    && !submissionTransitioned && isSupportPage(view.getUrl()) && "2".equals(result)) {
+                monitorSubmissionResult(session, 0);
+            }
+        });
     }
 
     private void monitorSubmissionResult(int session, int attempt) {
@@ -2143,6 +2210,7 @@ public class MainActivity extends Activity {
             browser.evaluateJavascript(SubmissionPage.SCRIPT, result -> {
                 if (session != requestSession || pendingFriend == null || submissionTransitioned) return;
                 if (generation == formGeneration && "2".equals(result)) {
+                    recordRecentRequest();
                     submissionTransitioned = true;
                     if (automaticAdvance && requestIndex + 1 < requestQueue.size()) {
                         requestIndex++;
@@ -2426,6 +2494,39 @@ public class MainActivity extends Activity {
         else if (selecting) { exitSelection(); renderHome(); }
         else if (searchOpen && searchToggle != null) searchToggle.performClick();
         else super.onBackPressed();
+    }
+
+    private void updateRecentRequestLabel(Friend friend, LinearLayout label, long now) {
+        boolean enabled = getSharedPreferences(PREFERENCES_FILE, MODE_PRIVATE)
+                .getBoolean("showRecentRequests", false);
+        String elapsed = enabled ? RecentRequest.elapsed(friend.lastRequestAt, now) : null;
+        label.setVisibility(elapsed == null ? View.GONE : View.VISIBLE);
+        if (elapsed != null) {
+            TextView duration = (TextView) label.getChildAt(1);
+            if (!elapsed.contentEquals(duration.getText())) duration.setText(elapsed);
+            label.getChildAt(0).setContentDescription("Demande soumise il y a " + elapsed
+                    + ", restauration non confirmée");
+        }
+    }
+
+    private void updateRecentRequestLabels() {
+        long now = System.currentTimeMillis();
+        for (java.util.Map.Entry<Friend, LinearLayout> entry : recentRequestLabels.entrySet()) {
+            updateRecentRequestLabel(entry.getKey(), entry.getValue(), now);
+        }
+    }
+
+    @Override protected void onResume() {
+        super.onResume();
+        if (home != null) {
+            home.removeCallbacks(recentRequestRefresh);
+            recentRequestRefresh.run();
+        }
+    }
+
+    @Override protected void onPause() {
+        if (home != null) home.removeCallbacks(recentRequestRefresh);
+        super.onPause();
     }
 
     @Override protected void onDestroy() {
