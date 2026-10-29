@@ -79,6 +79,7 @@ public class MainActivity extends Activity {
     private String friendQuery = "";
     private String searchProfileId = "";
     private boolean searchOpen;
+    private boolean favoritesOnly;
     private LinearLayout friendResults;
     private TextView friendCount;
     private EditText friendSearch;
@@ -96,7 +97,7 @@ public class MainActivity extends Activity {
     private LinearLayout drawerProfiles;
     private Button menuButton;
     private ImageButton settingsButton;
-    private ImageButton selectionEdit, selectionCopy, selectionDelete;
+    private ImageButton selectionEdit, selectionCopy, selectionFavorite, selectionDelete;
     private TextView toolbarTitle;
     private Button procedureBack, procedureNext;
     private boolean automaticAdvance, procedureFinished, automaticFill, automaticCenter;
@@ -117,6 +118,7 @@ public class MainActivity extends Activity {
 
     static final class Friend implements FriendList.Entry {
         String name, username;
+        boolean favorite;
         final long addedAt;
 
         Friend(String name, String username) {
@@ -134,7 +136,8 @@ public class MainActivity extends Activity {
         @Override public long addedAt() { return addedAt; }
 
         JSONObject json() throws JSONException {
-            return new JSONObject().put("name", name).put("username", username).put("addedAt", addedAt);
+            return new JSONObject().put("name", name).put("username", username).put("addedAt", addedAt)
+                    .put("favorite", favorite);
         }
     }
 
@@ -174,8 +177,11 @@ public class MainActivity extends Activity {
             JSONArray friends = data.optJSONArray("friends");
             if (friends != null) for (int i = 0; i < friends.length(); i++) {
                 JSONObject item = friends.optJSONObject(i);
-                if (item != null) p.friends.add(new Friend(
-                        item.optString("name"), item.optString("username"), item.optLong("addedAt", 0)));
+                if (item != null) {
+                    Friend friend = new Friend(item.optString("name"), item.optString("username"), item.optLong("addedAt", 0));
+                    friend.favorite = item.optBoolean("favorite", false);
+                    p.friends.add(friend);
+                }
             }
             return p;
         }
@@ -197,6 +203,7 @@ public class MainActivity extends Activity {
         if (state != null) {
             friendQuery = state.getString("friendQuery", "");
             searchOpen = state.getBoolean("friendSearchOpen");
+            favoritesOnly = state.getBoolean("favoritesOnly");
             searchProfileId = state.getString("searchProfileId", "");
         }
 
@@ -228,7 +235,7 @@ public class MainActivity extends Activity {
         topBar.addView(actions);
         gap(topBar, 12);
         browserStatus = mutedText("Vérifie les informations avant l’envoi manuel.", 13);
-        browserStatus.setBackground(ui.shape(ui.background, Color.TRANSPARENT));
+        browserStatus.setBackground(ui.gradient(ui.background, ui.accentSoft, Color.TRANSPARENT));
         browserStatus.setPadding(dp(12), dp(10), dp(12), dp(10));
         browserStatus.setAccessibilityLiveRegion(View.ACCESSIBILITY_LIVE_REGION_POLITE);
         topBar.addView(browserStatus, new LinearLayout.LayoutParams(-1, -2));
@@ -303,7 +310,7 @@ public class MainActivity extends Activity {
             }
         });
         FrameLayout formCard = new FrameLayout(this);
-        formCard.setBackground(ui.shape(ui.surface, ui.border));
+        formCard.setBackground(ui.raisedSurface());
         formCard.setClipToOutline(true);
         formCard.addView(browser, new FrameLayout.LayoutParams(-1, -1));
         LinearLayout.LayoutParams formParams = new LinearLayout.LayoutParams(-1, 0, 1);
@@ -315,7 +322,7 @@ public class MainActivity extends Activity {
         root.addView(homePanel, new FrameLayout.LayoutParams(-1, -1));
         LinearLayout toolbar = horizontal();
         toolbar.setPadding(dp(8), dp(8), dp(16), dp(8));
-        toolbar.setBackgroundColor(ui.surface);
+        toolbar.setBackground(ui.gradient(ui.surface, ui.accentSoft, Color.TRANSPARENT));
         menuButton = button("", () -> drawerLayout.openDrawer(drawerPanel));
         menuButton.setTextSize(24);
         menuButton.setContentDescription("Ouvrir le menu des profils");
@@ -335,11 +342,15 @@ public class MainActivity extends Activity {
         selectionCopy = friendToolIcon(R.drawable.ic_copy_to, "Copier les amis sélectionnés");
         selectionCopy.setOnClickListener(view -> copySelectedFriends());
         toolbar.addView(selectionCopy, new LinearLayout.LayoutParams(dp(48), dp(48)));
+        selectionFavorite = friendToolIcon(R.drawable.ic_favorite, "Ajouter aux favoris");
+        selectionFavorite.setOnClickListener(view -> toggleSelectedFavorites());
+        toolbar.addView(selectionFavorite, new LinearLayout.LayoutParams(dp(48), dp(48)));
         selectionDelete = friendToolIcon(R.drawable.ic_delete, "Supprimer les amis sélectionnés");
         selectionDelete.setOnClickListener(view -> deleteSelectedFriends());
         toolbar.addView(selectionDelete, new LinearLayout.LayoutParams(dp(48), dp(48)));
         selectionEdit.setVisibility(View.GONE);
         selectionCopy.setVisibility(View.GONE);
+        selectionFavorite.setVisibility(View.GONE);
         selectionDelete.setVisibility(View.GONE);
         settingsButton = friendToolIcon(R.drawable.ic_settings, "Paramètres");
         android.graphics.drawable.GradientDrawable settingsCircle = new android.graphics.drawable.GradientDrawable();
@@ -400,6 +411,12 @@ public class MainActivity extends Activity {
         renderDrawerProfiles();
         if (active == null) {
             LinearLayout welcome = card();
+            welcome.setBackground(ui.profileBackdrop());
+            TextView welcomeLabel = text("STREAK KEEPER", 11, true);
+            welcomeLabel.setTextColor(ui.accent);
+            welcomeLabel.setLetterSpacing(.08f);
+            welcome.addView(welcomeLabel);
+            gap(welcome, 6);
             welcome.addView(text("Bienvenue", 26, true));
             gap(welcome, 8);
             welcome.addView(mutedText("Tes profils et tes amis, au même endroit.", 15));
@@ -408,7 +425,11 @@ public class MainActivity extends Activity {
             page.addView(welcome);
         } else {
             LinearLayout summary = card();
-            summary.addView(mutedText("PROFIL ACTIF", 11));
+            summary.setBackground(ui.profileBackdrop());
+            TextView profileLabel = text("PROFIL ACTIF", 11, true);
+            profileLabel.setTextColor(ui.accent);
+            profileLabel.setLetterSpacing(.08f);
+            summary.addView(profileLabel);
             gap(summary, 4);
             summary.addView(text(active.name, 24, true));
             summary.addView(mutedText("@" + active.username, 15));
@@ -459,7 +480,8 @@ public class MainActivity extends Activity {
     private void addFriendTools(LinearLayout page) {
         ImageButton search = friendToolIcon(R.drawable.ic_search, "Rechercher des amis");
         searchToggle = search;
-        sortButton = friendToolIcon(R.drawable.ic_filter, "Trier les amis : " + friendOrder.label);
+        sortButton = friendToolIcon(R.drawable.ic_filter, "Trier et filtrer les amis");
+        styleFriendTool(sortButton, favoritesOnly);
         sortButton.setOnClickListener(view -> showFriendSort());
         LinearLayout searchRow = horizontal();
         friendSearch = new EditText(this);
@@ -529,36 +551,73 @@ public class MainActivity extends Activity {
     }
 
     private void showFriendSort() {
-        PopupMenu menu = new PopupMenu(this, sortButton);
-        for (FriendList.Order order : FriendList.Order.values()) {
-            android.view.MenuItem item = menu.getMenu().add(0, order.ordinal(), order.ordinal(), order.label);
-            item.setCheckable(true).setChecked(order == friendOrder);
-            item.setOnMenuItemClickListener(selected -> {
-                friendOrder = order;
-                getSharedPreferences(PREFERENCES_FILE, MODE_PRIVATE).edit()
-                        .putString("friendSort", order.name()).apply();
-                sortButton.setTooltipText("Trier les amis : " + order.label);
-                sortButton.setContentDescription("Trier les amis : " + order.label);
-                renderFriendResults();
-                return true;
-            });
-        }
-        menu.getMenu().setGroupCheckable(0, true, true);
-        menu.show();
+        LinearLayout content = vertical();
+        content.setPadding(dp(20), dp(8), dp(20), dp(16));
+        content.addView(text("Trier par :", 15, true));
+        Button orderButton = button(friendOrder.label + "  ▾", () -> {});
+        orderButton.setGravity(Gravity.CENTER_VERTICAL | Gravity.START);
+        content.addView(orderButton, new LinearLayout.LayoutParams(-1, -2));
+        orderButton.setOnClickListener(view -> {
+            PopupMenu menu = new PopupMenu(this, orderButton);
+            for (FriendList.Order order : FriendList.Order.values()) {
+                android.view.MenuItem item = menu.getMenu().add(order.label);
+                item.setCheckable(true).setChecked(order == friendOrder);
+                item.setOnMenuItemClickListener(selected -> {
+                    friendOrder = order;
+                    getSharedPreferences(PREFERENCES_FILE, MODE_PRIVATE).edit()
+                            .putString("friendSort", order.name()).apply();
+                    orderButton.setText(order.label + "  ▾");
+                    renderFriendResults();
+                    return true;
+                });
+            }
+            menu.getMenu().setGroupCheckable(0, true, true);
+            menu.show();
+        });
+        gap(content, 16);
+        LinearLayout filterRow = horizontal();
+        LinearLayout labels = vertical();
+        labels.addView(text("Favoris uniquement", 15, true));
+        labels.addView(mutedText("Afficher uniquement les amis marqués d’une étoile.", 13));
+        filterRow.addView(labels, new LinearLayout.LayoutParams(0, -2, 1));
+        Switch toggle = new Switch(this);
+        toggle.setContentDescription("Favoris uniquement");
+        toggle.setMinWidth(dp(48));
+        toggle.setMinHeight(dp(48));
+        int[][] states = {new int[]{android.R.attr.state_checked}, new int[]{}};
+        toggle.setThumbTintList(new ColorStateList(states, new int[]{ui.accent, ui.surface}));
+        toggle.setTrackTintList(new ColorStateList(states, new int[]{ui.accent, ui.muted}));
+        toggle.setChecked(favoritesOnly);
+        toggle.setOnCheckedChangeListener((view, checked) -> {
+            favoritesOnly = checked;
+            styleFriendTool(sortButton, favoritesOnly);
+            renderFriendResults();
+        });
+        filterRow.addView(toggle, new LinearLayout.LayoutParams(-2, dp(48)));
+        content.addView(filterRow);
+        showDialog(new AlertDialog.Builder(this).setTitle("Trier et filtrer")
+                .setView(content).setPositiveButton("Fermer", null));
     }
 
     private void renderFriendResults() {
         if (active == null || friendResults == null) return;
         friendResults.removeAllViews();
-        java.util.List<Friend> matches = FriendList.select(active.friends, friendQuery, friendOrder);
+        java.util.List<Friend> matches = FriendList.select(active.friends, friendQuery, friendOrder,
+                friend -> !favoritesOnly || friend.favorite);
         friendCount.setText(matches.size() == active.friends.size() ? Integer.toString(matches.size())
                 : matches.size() + " / " + active.friends.size());
         friendCount.setContentDescription(matches.size() + " amis affichés sur " + active.friends.size());
         if (!active.friends.isEmpty() && matches.isEmpty()) {
             LinearLayout empty = card();
             empty.addView(text("Aucun ami trouvé", 17, true));
-            empty.addView(mutedText("Essaie une partie du surnom ou du pseudo Snapchat.", 14));
-            empty.addView(button("Effacer la recherche", () -> friendSearch.setText("")));
+            empty.addView(mutedText(favoritesOnly ? "Aucun favori ne correspond aux filtres actifs."
+                    : "Essaie une partie du surnom ou du pseudo Snapchat.", 14));
+            if (!friendQuery.trim().isEmpty()) empty.addView(button("Effacer la recherche", () -> friendSearch.setText("")));
+            if (favoritesOnly) empty.addView(button("Afficher tous les amis", () -> {
+                favoritesOnly = false;
+                styleFriendTool(sortButton, false);
+                renderFriendResults();
+            }));
             friendResults.addView(empty);
         }
             if (active.friends.isEmpty()) {
@@ -585,6 +644,16 @@ public class MainActivity extends Activity {
             labels.addView(username);
             labels.setPadding(0, 0, dp(8), 0);
             row.addView(labels, new LinearLayout.LayoutParams(0, -2, 1));
+            if (friend.favorite) {
+                android.widget.ImageView star = new android.widget.ImageView(this);
+                star.setImageResource(R.drawable.ic_favorite);
+                star.setImageTintList(ColorStateList.valueOf(ui.accent));
+                star.setAlpha(.75f);
+                star.setContentDescription("Favori");
+                LinearLayout.LayoutParams starParams = new LinearLayout.LayoutParams(dp(16), dp(16));
+                starParams.setMarginEnd(dp(6));
+                row.addView(star, starParams);
+            }
 
             if (selecting) {
                 boolean selected = selectedFriends.contains(friend);
@@ -672,6 +741,22 @@ public class MainActivity extends Activity {
         });
     }
 
+    private Friend copyFriendData(Friend source, String name, String username) {
+        Friend copy = new Friend(name, username);
+        copy.favorite = source.favorite;
+        return copy;
+    }
+
+    private void toggleSelectedFavorites() {
+        if (selectedFriends.isEmpty()) return;
+        boolean allFavorites = true;
+        for (Friend friend : selectedFriends) if (!friend.favorite) { allFavorites = false; break; }
+        for (Friend friend : selectedFriends) friend.favorite = !allFavorites;
+        persist();
+        updateSelectionUi();
+        renderFriendResults();
+    }
+
     private void copySelectedFriends() {
         if (active == null || selectedFriends.isEmpty()) return;
         List<Friend> selection = new ArrayList<>(selectedFriends);
@@ -698,7 +783,7 @@ public class MainActivity extends Activity {
             badge.setOnClickListener(view -> {
                 int copied = 0;
                 for (Friend friend : selection) {
-                    if (FriendList.copyTo(friend, destination.friends, Friend::new)) copied++;
+                    if (FriendList.copyTo(friend, destination.friends, (name, username) -> copyFriendData(friend, name, username))) copied++;
                 }
                 if (copied > 0) persist();
                 int skipped = selection.size() - copied;
@@ -758,14 +843,14 @@ public class MainActivity extends Activity {
 
     private LinearLayout card() {
         LinearLayout card = vertical();
-        card.setBackground(ui.shape(ui.surface, ui.border));
+        card.setBackground(ui.raisedSurface());
         card.setPadding(dp(18), dp(18), dp(18), dp(18));
         return card;
     }
 
     private void createProfileDrawer() {
         drawerPanel = vertical();
-        drawerPanel.setBackgroundColor(ui.surface);
+        drawerPanel.setBackground(ui.gradient(ui.surface, ui.accentSoft, Color.TRANSPARENT));
         drawerPanel.setPadding(dp(16), dp(16), dp(16), dp(16));
         int width = Math.min(dp(320), getResources().getDisplayMetrics().widthPixels - dp(56));
         DrawerLayout.LayoutParams params = new DrawerLayout.LayoutParams(width, -1);
@@ -879,6 +964,7 @@ public class MainActivity extends Activity {
         state.putBoolean("reopenSettings", reopenSettings);
         state.putString("friendQuery", friendQuery);
         state.putBoolean("friendSearchOpen", searchOpen);
+        state.putBoolean("favoritesOnly", favoritesOnly);
         state.putString("searchProfileId", searchProfileId);
         state.putBoolean("profileDrawerOpen", drawerLayout.isDrawerOpen(drawerPanel));
         super.onSaveInstanceState(state);
@@ -1159,7 +1245,7 @@ public class MainActivity extends Activity {
         importButton.setOnClickListener(view -> {
             int count = 0;
             for (Friend friend : chosen) {
-                if (FriendList.copyTo(friend, destination.friends, Friend::new)) count++;
+                if (FriendList.copyTo(friend, destination.friends, (name, username) -> copyFriendData(friend, name, username))) count++;
             }
             if (count > 0) { persist(); renderHome(); }
             dialog.dismiss();
@@ -1237,7 +1323,16 @@ public class MainActivity extends Activity {
         toolbarTitle.setTextSize(selecting ? 16 : 22);
         selectionEdit.setVisibility(selecting && selectedFriends.size() == 1 ? View.VISIBLE : View.GONE);
         selectionCopy.setVisibility(selecting ? View.VISIBLE : View.GONE);
+        selectionFavorite.setVisibility(selecting ? View.VISIBLE : View.GONE);
         selectionDelete.setVisibility(selecting ? View.VISIBLE : View.GONE);
+        boolean allFavorites = !selectedFriends.isEmpty();
+        for (Friend friend : selectedFriends) if (!friend.favorite) { allFavorites = false; break; }
+        String favoriteAction = allFavorites ? "Retirer des favoris" : "Ajouter aux favoris";
+        selectionFavorite.setContentDescription(favoriteAction);
+        selectionFavorite.setTooltipText(favoriteAction);
+        selectionFavorite.setImageTintList(ColorStateList.valueOf(allFavorites ? ui.accent : ui.text));
+        selectionFavorite.setEnabled(!selectedFriends.isEmpty());
+        selectionFavorite.setAlpha(selectedFriends.isEmpty() ? .4f : 1f);
         selectionCopy.setEnabled(!selectedFriends.isEmpty());
         selectionDelete.setEnabled(!selectedFriends.isEmpty());
         selectionCopy.setAlpha(selectedFriends.isEmpty() ? .4f : 1f);
@@ -1564,7 +1659,7 @@ public class MainActivity extends Activity {
 
     private LinearLayout settingsSection(LinearLayout page, String title, String description) {
         LinearLayout card = vertical();
-        card.setBackground(ui.shape(ui.surface, ui.border));
+        card.setBackground(ui.gradient(ui.surface, ui.accentSoft, ui.border));
         page.addView(card, new LinearLayout.LayoutParams(-1, -2));
 
         LinearLayout header = horizontal();

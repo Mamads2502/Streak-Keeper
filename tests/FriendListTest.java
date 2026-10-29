@@ -26,6 +26,10 @@ public final class FriendListTest {
         check("Whitespace query", FriendList.select(input, "  \t ", FriendList.Order.OLDEST), zoe, elodie, adam, emile);
         check("No match", FriendList.select(input, "inconnu", FriendList.Order.NAME));
         check("Filter retains selected sort", FriendList.select(input, "e", FriendList.Order.NEWEST), emile, elodie, zoe);
+        check("Favorite filter with search and sort", FriendList.select(input, "e", FriendList.Order.NEWEST,
+                friend -> friend == zoe || friend == emile), emile, zoe);
+        check("Favorite filter empty", FriendList.select(input, "adam", FriendList.Order.NAME,
+                friend -> friend == zoe));
         check("Original list unchanged", input, zoe, elodie, adam, emile);
         if (FriendList.Order.restore("unknown") != FriendList.Order.OLDEST) throw new AssertionError("Invalid saved sort");
         System.out.println("OK invalid saved sort fallback");

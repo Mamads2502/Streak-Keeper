@@ -3,6 +3,15 @@ package fr.streakkeeper.app;
 import android.content.Context;
 import android.content.res.ColorStateList;
 import android.graphics.Color;
+import android.graphics.Canvas;
+import android.graphics.Paint;
+import android.graphics.Path;
+import android.graphics.Rect;
+import android.graphics.LinearGradient;
+import android.graphics.Shader;
+import android.graphics.ColorFilter;
+import android.graphics.PixelFormat;
+import android.graphics.drawable.Drawable;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
 import android.graphics.drawable.RippleDrawable;
@@ -61,6 +70,92 @@ final class AppTheme {
         return drawable;
     }
 
+    GradientDrawable gradient(int start, int end, int stroke) {
+        GradientDrawable drawable = new GradientDrawable(GradientDrawable.Orientation.TL_BR,
+                new int[]{start, end});
+        drawable.setCornerRadius(dp(RADIUS));
+        if (stroke != Color.TRANSPARENT) drawable.setStroke(dp(1), stroke);
+        return drawable;
+    }
+
+    Drawable profileBackdrop() { return new ProfileBackdrop(); }
+    Drawable raisedSurface() { return new RaisedSurface(); }
+
+    private final class RaisedSurface extends Drawable {
+        private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        @Override public void draw(Canvas canvas) {
+            Rect b = getBounds();
+            if (b.isEmpty()) return;
+            float inset = dp(1) / 2f, r = dp(RADIUS);
+            float left = b.left + inset, top = b.top + inset;
+            float right = b.right - inset, bottom = b.bottom - inset;
+            paint.setStyle(Paint.Style.FILL);
+            paint.setShader(new LinearGradient(left, top, right, bottom,
+                    surface, blend(surface, accent, .025f), Shader.TileMode.CLAMP));
+            canvas.drawRoundRect(left, top, right, bottom, r, r, paint);
+            paint.setShader(null);
+            paint.setStyle(Paint.Style.STROKE);
+            paint.setStrokeWidth(dp(1));
+            paint.setColor(blend(border, accent, .12f));
+            canvas.drawRoundRect(left, top, right, bottom, r, r, paint);
+            paint.setStrokeWidth(dp(2));
+            paint.setStrokeCap(Paint.Cap.ROUND);
+            paint.setColor(blend(surface, accent, .25f));
+            canvas.drawArc(left + dp(2), top + dp(2), left + r * 2, top + r * 2,
+                    185, 55, false, paint);
+            paint.setColor(blend(border, accent, .27f));
+            canvas.drawArc(right - r * 2, bottom - r * 2, right - dp(2), bottom - dp(2),
+                    5, 55, false, paint);
+            paint.setStrokeCap(Paint.Cap.BUTT);
+            paint.setStyle(Paint.Style.FILL);
+        }
+        @Override public void setAlpha(int alpha) { paint.setAlpha(alpha); }
+        @Override public void setColorFilter(ColorFilter filter) { paint.setColorFilter(filter); }
+        @Override public int getOpacity() { return PixelFormat.TRANSLUCENT; }
+    }
+
+    private final class ProfileBackdrop extends Drawable {
+        private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final Path clip = new Path();
+        @Override public void draw(Canvas canvas) {
+            Rect b = getBounds();
+            if (b.isEmpty()) return;
+            float left = b.left, top = b.top, right = b.right, bottom = b.bottom;
+            float radius = dp(RADIUS);
+            clip.reset();
+            clip.addRoundRect(left, top, right, bottom, radius, radius, Path.Direction.CW);
+            canvas.save();
+            canvas.clipPath(clip);
+            paint.setStyle(Paint.Style.FILL);
+            paint.setShader(new LinearGradient(left, top, right, bottom,
+                    new int[]{surface, blend(surface, accent, .045f), blend(surface, accent, .12f)},
+                    null, Shader.TileMode.CLAMP));
+            canvas.drawRect(b, paint);
+            paint.setShader(null);
+            float cx = right - dp(10), cy = top + dp(10);
+            paint.setColor(blend(surface, accent, .06f));
+            canvas.drawCircle(cx, cy, dp(76), paint);
+            paint.setStyle(Paint.Style.STROKE);
+            paint.setStrokeWidth(dp(1));
+            paint.setColor(blend(surface, accent, .18f));
+            canvas.drawCircle(cx, cy, dp(52), paint);
+            canvas.drawCircle(cx, cy, dp(68), paint);
+            paint.setStyle(Paint.Style.FILL);
+            paint.setColor(blend(surface, accent, .25f));
+            canvas.drawCircle(right - dp(42), top + dp(66), dp(3), paint);
+            canvas.restore();
+            paint.setStyle(Paint.Style.STROKE);
+            paint.setStrokeWidth(dp(1));
+            paint.setColor(blend(surface, accent, .16f));
+            canvas.drawRoundRect(left + dp(1) / 2f, top + dp(1) / 2f,
+                    right - dp(1) / 2f, bottom - dp(1) / 2f, radius, radius, paint);
+            paint.setStyle(Paint.Style.FILL);
+        }
+        @Override public void setAlpha(int alpha) { paint.setAlpha(alpha); }
+        @Override public void setColorFilter(ColorFilter filter) { paint.setColorFilter(filter); }
+        @Override public int getOpacity() { return PixelFormat.TRANSLUCENT; }
+    }
+
     void text(TextView view, int size, boolean emphasized) {
         view.setTextColor(text);
         view.setTextSize(size);
@@ -72,8 +167,11 @@ final class AppTheme {
         int fill = style == ButtonStyle.PRIMARY ? accent
                 : style == ButtonStyle.SECONDARY ? accentSoft : surface;
         int foreground = style == ButtonStyle.PRIMARY ? onAccent : text;
+        Drawable backgroundShape = style == ButtonStyle.PRIMARY
+                ? gradient(fill, blend(fill, Color.BLACK, .10f), Color.TRANSPARENT)
+                : shape(fill, Color.TRANSPARENT);
         button.setBackground(new RippleDrawable(ColorStateList.valueOf(blend(fill, foreground, .15f)),
-                shape(fill, Color.TRANSPARENT), null));
+                backgroundShape, null));
         text(button, BODY_SIZE, true);
         button.setTextColor(foreground);
         button.setAllCaps(false);

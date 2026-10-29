@@ -26,12 +26,18 @@ final class FriendList {
     }
 
     static <T extends Entry> List<T> select(List<T> source, String query, Order order) {
+        return select(source, query, order, friend -> true);
+    }
+
+    static <T extends Entry> List<T> select(List<T> source, String query, Order order,
+            java.util.function.Predicate<T> filter) {
         String normalized = normalize(query).replace('@', ' ').trim();
         String[] terms = normalized.isEmpty() ? new String[0] : normalized.split("\\s+");
         Map<T, Integer> positions = new IdentityHashMap<>();
         List<T> result = new ArrayList<>();
         for (int i = 0; i < source.size(); i++) {
             T friend = source.get(i);
+            if (!filter.test(friend)) continue;
             positions.put(friend, i);
             String name = normalize(friend.displayName());
             String username = normalize(friend.snapchatUsername());
