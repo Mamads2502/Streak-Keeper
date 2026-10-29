@@ -334,7 +334,12 @@ public class MainActivity extends Activity {
         guide.setBackgroundColor(Color.TRANSPARENT);
         guide.setTextColor(ui.muted);
         guide.setPaintFlags(guide.getPaintFlags() | Paint.UNDERLINE_TEXT_FLAG);
-        page.addView(guide, new LinearLayout.LayoutParams(-1, -2));
+        guide.setMinWidth(0);
+        guide.setMinimumWidth(0);
+        guide.setPadding(0, guide.getPaddingTop(), 0, guide.getPaddingBottom());
+        LinearLayout.LayoutParams guideParams = new LinearLayout.LayoutParams(-2, -2);
+        guideParams.gravity = Gravity.CENTER_HORIZONTAL;
+        page.addView(guide, guideParams);
         home.removeAllViews();
         home.addView(page);
     }
