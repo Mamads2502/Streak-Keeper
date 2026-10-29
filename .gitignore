@@ -4,3 +4,7 @@ build/
 app/build/
 local.properties
 *.iml
+
+# Exports personnels Snapchat
+*.[Zz][Ii][Pp]
+[Mm][Yy][Dd][Aa][Tt][Aa]*

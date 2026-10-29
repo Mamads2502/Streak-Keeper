@@ -269,3 +269,7 @@ Les e-mails et téléphones sont enregistrés dans le stockage privé de l'appli
 ### Demandes récentes
 
 Dans Paramètres → Apparence, active « Demandes récentes » pour voir un point vert animé et le temps écoulé à droite du nom de chaque ami pendant 24 heures. L’application enregistre l’heure lorsqu’elle détecte une soumission du formulaire ou, en secours, la réponse de réception du site, même si l’indicateur est désactivé. Le point indique une soumission détectée, pas une confirmation de réception ou de restauration. Le temps écoulé reste annoncé par les lecteurs d’écran. L’animation respecte le réglage système de réduction des animations. La détection dépend du fonctionnement du site Snapchat.
+
+### Importer ses amis Snapchat
+
+Depuis le bouton d’import près d’« Ajouter un ami », choisir « Depuis Snapchat ». Sur accounts.snapchat.com, demander un export « Mes données » en sélectionnant les données utilisateur et les fichiers JSON, puis télécharger le ZIP. Sélectionner ce ZIP dans l’application : les amis actuels trouvés peuvent être choisis avant l’import. Le nom affiché de l’export est utilisé lorsqu’il existe ; le pseudo Snapchat reste enregistré pour le formulaire. Les doublons du profil sont ignorés et la lecture s’effectue sur le téléphone. Un export sans `json/friends.json`, ou dont la liste `Friends` est vide, ne permet pas l’import.

@@ -117,3 +117,10 @@ Fonctionnalités présentes dans le code, dont le fonctionnement sur appareil re
 4. Corriger les problèmes constatés et ajouter les vérifications adaptées aux changements ; actualiser le statut de validation dans la documentation.
 
 Les procédures détaillées d’installation, de compilation et de test manuel sont dans `README.md`.
+
+## Import Snapchat
+
+- Le bouton d’import propose un autre profil ou un export Snapchat ZIP sélectionné par le sélecteur Android. Une aide décrit la demande d’export JSON ; la lecture et la sélection restent locales.
+- `SnapchatImport` lit uniquement `json/friends.json` et la catégorie `Friends`, utilise `Username` pour le formulaire et `Display Name` comme nom affiché (pseudo en repli), ignore les catégories d’anciens amis, comptes bloqués et demandes, et déduplique les pseudos. Les tailles décompressées sont limitées. Le parcours de sélection existant conserve ses contrôles et sa protection contre les doublons du profil.
+- L’export observé contient ces champs ; les variations de format ne sont pas garanties. Une liste vide peut provenir de Snapchat. Les ZIP et répertoires `mydata` sont ignorés par Git ; vérifier également tout fichier sensible déjà suivi ou renommé.
+- À tester sur appareil : sélection et annulation du ZIP, grande archive, erreurs, rotation, thèmes, sélection et doublons, import répété et persistance. Une rotation pendant la lecture peut nécessiter de relancer l’import.

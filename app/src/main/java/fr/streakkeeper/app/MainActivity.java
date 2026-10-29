@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.app.AlertDialog;
 import android.graphics.Color;
 import android.content.SharedPreferences;
+import android.content.Intent;
 import android.graphics.Paint;
 import android.net.Uri;
 import android.text.TextUtils;
@@ -120,6 +121,8 @@ public class MainActivity extends Activity {
             if (home != null) home.postDelayed(this, 15_000);
         }
     };
+    private static final int PICK_SNAPCHAT_EXPORT = 408;
+    private String snapchatImportProfileId;
     private WebView browser;
     private View themeCover;
     private TextView browserStatus;
@@ -229,6 +232,7 @@ public class MainActivity extends Activity {
         friendOrder = FriendList.Order.restore(getSharedPreferences(PREFERENCES_FILE, MODE_PRIVATE)
                 .getString("friendSort", FriendList.Order.OLDEST.name()));
         if (state != null) {
+            snapchatImportProfileId = state.getString("snapchatImportProfileId");
             friendQuery = state.getString("friendQuery", "");
             searchOpen = state.getBoolean("friendSearchOpen");
             favoritesOnly = state.getBoolean("favoritesOnly");
@@ -524,9 +528,15 @@ public class MainActivity extends Activity {
             LinearLayout actions = horizontal();
             actions.addView(primaryButton("+ Ajouter un ami", this::addFriend),
                     new LinearLayout.LayoutParams(0, -2, 1));
-            ImageButton copy = friendToolIcon(R.drawable.ic_copy, "Importer des amis depuis un autre profil");
-            copy.setOnClickListener(view -> copyFriends());
-            LinearLayout.LayoutParams copyParams = new LinearLayout.LayoutParams(dp(48), dp(48));
+            Button copy = button("Importer", this::chooseImportSource);
+            android.graphics.drawable.Drawable importIcon = getDrawable(R.drawable.ic_copy).mutate();
+            importIcon.setTint(ui.text);
+            importIcon.setBounds(0, 0, dp(20), dp(20));
+            copy.setCompoundDrawablesRelative(importIcon, null, null, null);
+            copy.setCompoundDrawablePadding(dp(6));
+            copy.setPadding(dp(10), dp(12), dp(10), dp(12));
+            copy.setContentDescription("Importer des amis");
+            LinearLayout.LayoutParams copyParams = new LinearLayout.LayoutParams(0, -2, 1);
             copyParams.leftMargin = dp(8);
             actions.addView(copy, copyParams);
             page.addView(actions);
@@ -1058,6 +1068,7 @@ public class MainActivity extends Activity {
     }
 
     @Override protected void onSaveInstanceState(Bundle state) {
+        state.putString("snapchatImportProfileId", snapchatImportProfileId);
         state.putBoolean("reopenSettings", reopenSettings);
         state.putString("friendQuery", friendQuery);
         state.putBoolean("friendSearchOpen", searchOpen);
@@ -1194,6 +1205,87 @@ public class MainActivity extends Activity {
         badge.setTextColor(ui.accentText);
         badge.setElevation(dp(2));
         return badge;
+    }
+
+    private void chooseImportSource() {
+        LinearLayout content = vertical();
+        content.setPadding(dp(20), dp(8), dp(20), dp(12));
+        Button profile = button("Depuis un autre profil", () -> {});
+        content.addView(profile, new LinearLayout.LayoutParams(-1, -2));
+        gap(content, 8);
+        LinearLayout row = horizontal();
+        Button snapchat = button("Depuis Snapchat", () -> {});
+        row.addView(snapchat, new LinearLayout.LayoutParams(0, -2, 1));
+        Button info = button("ⓘ", () -> showDialog(new AlertDialog.Builder(this)
+                .setTitle("Exporter ses données Snapchat")
+                .setMessage("Sur accounts.snapchat.com, ouvre « Mes données ». Sélectionne « Données utilisateur » et « Exporter des fichiers JSON », puis demande et télécharge l’export ZIP. Choisis JSON : l’application lit ce format structuré pour identifier les amis et leurs pseudos ; le format HTML n’est pas pris en charge. Les données sont lues localement sur ton téléphone.")
+                .setPositiveButton("Compris", null)));
+        ui.button(info, AppTheme.ButtonStyle.QUIET);
+        info.setPadding(0, 0, 0, 0);
+        info.setTextSize(20);
+        info.setTextColor(ui.muted);
+        info.setContentDescription("Comment obtenir l’export Snapchat");
+        info.setTooltipText("Comment obtenir l’export Snapchat");
+        row.addView(info, new LinearLayout.LayoutParams(dp(48), dp(48)));
+        content.addView(row);
+        AlertDialog dialog = showDialog(new AlertDialog.Builder(this).setTitle("Importer des amis")
+                .setView(content).setNegativeButton("Annuler", null));
+        profile.setOnClickListener(view -> { dialog.dismiss(); copyFriends(); });
+        snapchat.setOnClickListener(view -> {
+            dialog.dismiss();
+            if (active == null) return;
+            snapchatImportProfileId = active.id;
+            Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+            intent.addCategory(Intent.CATEGORY_OPENABLE);
+            intent.setType("*/*");
+            intent.putExtra(Intent.EXTRA_MIME_TYPES, new String[]{"application/zip", "application/x-zip-compressed", "application/octet-stream"});
+            try { startActivityForResult(intent, PICK_SNAPCHAT_EXPORT); }
+            catch (android.content.ActivityNotFoundException e) {
+                snapchatImportProfileId = null;
+                Toast.makeText(this, "Aucun sélecteur de fichiers disponible.", Toast.LENGTH_LONG).show();
+            }
+        });
+    }
+
+    @Override protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode != PICK_SNAPCHAT_EXPORT) return;
+        String profileId = snapchatImportProfileId;
+        snapchatImportProfileId = null;
+        if (resultCode != RESULT_OK || data == null || data.getData() == null || profileId == null) return;
+        Uri uri = data.getData();
+        Toast.makeText(this, "Lecture de l’export Snapchat…", Toast.LENGTH_SHORT).show();
+        new Thread(() -> {
+            try (java.io.InputStream input = getContentResolver().openInputStream(uri)) {
+                if (input == null) throw new java.io.IOException("Fichier inaccessible.");
+                List<SnapchatImport.Entry> entries = SnapchatImport.read(input);
+                runOnUiThread(() -> {
+                    if (isFinishing() || isDestroyed()) return;
+                    Profile destination = null;
+                    for (Profile profile : profiles) if (profile.id.equals(profileId)) destination = profile;
+                    if (destination == null || destination != active) {
+                        Toast.makeText(this, "Le profil actif a changé ; relance l’import.", Toast.LENGTH_LONG).show();
+                        return;
+                    }
+                    if (entries.isEmpty()) {
+                        showDialog(new AlertDialog.Builder(this).setTitle("Aucun ami trouvé")
+                                .setMessage("La liste des amis actuels est vide ou ne contient aucun pseudo exploitable. Vérifie les données sélectionnées dans Snapchat ; certains exports peuvent contenir une liste vide.")
+                                .setPositiveButton("Compris", null));
+                        return;
+                    }
+                    Profile source = new Profile();
+                    source.name = "Snapchat";
+                    for (SnapchatImport.Entry entry : entries) source.friends.add(new Friend(entry.name, entry.username));
+                    selectFriendsToImport(source, destination);
+                });
+            } catch (java.io.IOException | org.json.JSONException e) {
+                runOnUiThread(() -> {
+                    if (!isFinishing() && !isDestroyed()) showDialog(new AlertDialog.Builder(this)
+                            .setTitle("Import impossible").setMessage(e.getMessage())
+                            .setPositiveButton("Compris", null));
+                });
+            }
+        }).start();
     }
 
     private void copyFriends() {
