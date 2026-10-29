@@ -572,16 +572,8 @@ public class MainActivity extends Activity {
 
             if (selecting) {
                 boolean selected = selectedFriends.contains(friend);
-                TextView indicator = text("✓", 17, true);
-                indicator.setTextColor(ui.onAccent);
-                indicator.setGravity(Gravity.CENTER);
-                indicator.setPadding(0, 0, 0, 0);
-                android.graphics.drawable.GradientDrawable circle = new android.graphics.drawable.GradientDrawable();
-                circle.setShape(android.graphics.drawable.GradientDrawable.OVAL);
-                circle.setColor(ui.accent);
-                indicator.setBackground(circle);
+                TextView indicator = selectionIndicator();
                 indicator.setVisibility(selected ? View.VISIBLE : View.INVISIBLE);
-                indicator.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
                 FrameLayout slot = new FrameLayout(this);
                 FrameLayout.LayoutParams badge = new FrameLayout.LayoutParams(dp(28), dp(28), Gravity.CENTER);
                 slot.addView(indicator, badge);
@@ -1037,65 +1029,139 @@ public class MainActivity extends Activity {
     private void selectFriendsToImport(Profile source, Profile destination) {
         LinearLayout content = vertical();
         content.setPadding(dp(20), dp(8), dp(20), dp(12));
-        content.addView(mutedText("Choisis les amis à importer vers " + destination.name + ".", 14));
-        gap(content, 8);
+        EditText search = new EditText(this);
+        search.setSingleLine(true);
+        search.setHint("Rechercher un ami");
+        search.setContentDescription("Rechercher un ami à importer");
+        ui.input(search);
+        content.addView(search, new LinearLayout.LayoutParams(-1, -2));
+        gap(content, 12);
         LinearLayout list = vertical();
-        List<CheckBox> choices = new ArrayList<>();
         List<Friend> available = new ArrayList<>();
+        List<Friend> chosen = new ArrayList<>();
+        SelectionScrollView scroll = new SelectionScrollView(list, chosen);
+        Button selectAll = button("Tout sélectionner", () -> {});
+        Button importButton = primaryButton("Importer (0)", () -> {});
+        Runnable update = () -> {
+            boolean all = !available.isEmpty() && chosen.size() == available.size();
+            selectAll.setText(all ? "Tout désélectionner" : "Tout sélectionner");
+            selectAll.setEnabled(!available.isEmpty());
+            selectAll.setAlpha(available.isEmpty() ? .5f : 1f);
+            importButton.setText("Importer (" + chosen.size() + ")");
+            importButton.setEnabled(!chosen.isEmpty());
+            importButton.setAlpha(chosen.isEmpty() ? .5f : 1f);
+        };
         if (source.friends.isEmpty()) list.addView(mutedText("Ce profil n’a pas encore d’amis.", 14));
         for (Friend friend : source.friends) {
             boolean duplicate = hasFriend(destination, friend.username);
-            CheckBox choice = new CheckBox(this);
-            choice.setText(friend.name + " · @" + friend.username + (duplicate ? " — déjà présent" : ""));
-            choice.setTextColor(duplicate ? ui.muted : ui.text);
-            choice.setButtonTintList(android.content.res.ColorStateList.valueOf(ui.accent));
-            choice.setMinHeight(dp(48));
-            choice.setEnabled(!duplicate);
-            list.addView(choice);
-            if (!duplicate) { choices.add(choice); available.add(friend); }
+            if (!duplicate) available.add(friend);
+            LinearLayout row = horizontal();
+            row.setTag(friend);
+            row.setBackground(ui.shape(ui.surface, ui.border));
+            row.setPadding(dp(14), dp(10), dp(8), dp(10));
+            LinearLayout labels = vertical();
+            TextView name = text(friend.name, 16, true);
+            name.setMaxLines(2);
+            name.setEllipsize(TextUtils.TruncateAt.END);
+            if (duplicate) name.setTextColor(ui.muted);
+            labels.addView(name);
+            TextView username = mutedText("@" + friend.username + (duplicate ? " · Déjà présent" : ""), 13);
+            username.setMaxLines(2);
+            username.setEllipsize(TextUtils.TruncateAt.END);
+            labels.addView(username);
+            row.addView(labels, new LinearLayout.LayoutParams(0, -2, 1));
+            TextView indicator = selectionIndicator();
+            indicator.setVisibility(View.INVISIBLE);
+            FrameLayout slot = new FrameLayout(this);
+            slot.addView(indicator, new FrameLayout.LayoutParams(dp(28), dp(28), Gravity.CENTER));
+            row.addView(slot, new LinearLayout.LayoutParams(dp(48), dp(48)));
+            row.setEnabled(!duplicate);
+            row.setContentDescription(friend.name + ", @" + friend.username
+                    + (duplicate ? ", déjà présent" : ", non sélectionné"));
+            if (!duplicate) {
+                row.setOnClickListener(view -> {
+                    boolean selected = !chosen.contains(friend);
+                    if (selected) chosen.add(friend); else chosen.remove(friend);
+                    indicator.setVisibility(selected ? View.VISIBLE : View.INVISIBLE);
+                    row.setSelected(selected);
+                    row.setContentDescription(friend.name + ", @" + friend.username
+                            + (selected ? ", sélectionné" : ", non sélectionné"));
+                    update.run();
+                });
+                row.setOnLongClickListener(view -> {
+                    scroll.armSelectionDrag(!chosen.contains(friend), friend);
+                    row.performClick();
+                    return true;
+                });
+            }
+            LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, -2);
+            params.bottomMargin = dp(8);
+            list.addView(row, params);
         }
-        ScrollView scroll = new ScrollView(this);
+        TextView noResults = mutedText("Aucun ami trouvé.", 14);
+        noResults.setVisibility(View.GONE);
+        list.addView(noResults);
+        search.addTextChangedListener(new TextWatcher() {
+            @Override public void beforeTextChanged(CharSequence text, int start, int count, int after) { }
+            @Override public void onTextChanged(CharSequence text, int start, int before, int count) {
+                scroll.stopSelectionDrag();
+                List<Friend> matches = FriendList.select(source.friends, text.toString(), FriendList.Order.OLDEST);
+                int shown = 0;
+                for (int i = 0; i < list.getChildCount(); i++) {
+                    View row = list.getChildAt(i);
+                    if (!(row.getTag() instanceof Friend)) continue;
+                    boolean visible = matches.contains((Friend) row.getTag());
+                    row.setVisibility(visible ? View.VISIBLE : View.GONE);
+                    if (visible) shown++;
+                }
+                noResults.setVisibility(shown == 0 && !source.friends.isEmpty() ? View.VISIBLE : View.GONE);
+                scroll.scrollTo(0, 0);
+            }
+            @Override public void afterTextChanged(Editable text) { }
+        });
         scroll.addView(list);
         int listHeight = Math.min(dp(320), getResources().getDisplayMetrics().heightPixels / 3);
         content.addView(scroll, new LinearLayout.LayoutParams(-1, listHeight));
-        CheckBox selectAll = new CheckBox(this);
-        selectAll.setText("Tout sélectionner");
-        selectAll.setTextColor(ui.text);
-        selectAll.setButtonTintList(android.content.res.ColorStateList.valueOf(ui.accent));
-        selectAll.setEnabled(!choices.isEmpty());
-        content.addView(selectAll);
-        Button importButton = primaryButton("Importer (0)", () -> {});
+        gap(content, 12);
+        content.addView(selectAll, new LinearLayout.LayoutParams(-1, -2));
+        gap(content, 8);
         content.addView(importButton, new LinearLayout.LayoutParams(-1, -2));
         AlertDialog dialog = showDialog(new AlertDialog.Builder(this)
                 .setTitle("Amis de " + source.name).setView(content)
                 .setNegativeButton("Annuler", null));
-        boolean[] updating = {false};
-        Runnable update = () -> {
-            int count = 0;
-            for (CheckBox choice : choices) if (choice.isChecked()) count++;
-            updating[0] = true;
-            selectAll.setChecked(!choices.isEmpty() && count == choices.size());
-            updating[0] = false;
-            importButton.setText("Importer (" + count + ")");
-            importButton.setEnabled(count > 0);
-            importButton.setAlpha(count > 0 ? 1f : .5f);
-        };
-        for (CheckBox choice : choices) choice.setOnCheckedChangeListener((view, checked) -> update.run());
-        selectAll.setOnCheckedChangeListener((view, checked) -> {
-            if (updating[0]) return;
-            for (CheckBox choice : choices) choice.setChecked(checked);
+        dialog.setOnDismissListener(ignored -> scroll.stopSelectionDrag());
+        selectAll.setOnClickListener(view -> {
+            boolean select = chosen.size() != available.size();
+            for (int i = 0; i < list.getChildCount(); i++) {
+                View row = list.getChildAt(i);
+                if (row.isEnabled() && row.getTag() instanceof Friend
+                        && chosen.contains((Friend) row.getTag()) != select) row.performClick();
+            }
             update.run();
         });
         importButton.setOnClickListener(view -> {
             int count = 0;
-            for (int i = 0; i < choices.size(); i++) {
-                if (choices.get(i).isChecked() && FriendList.copyTo(available.get(i), destination.friends, Friend::new)) count++;
+            for (Friend friend : chosen) {
+                if (FriendList.copyTo(friend, destination.friends, Friend::new)) count++;
             }
             if (count > 0) { persist(); renderHome(); }
             dialog.dismiss();
             Toast.makeText(this, count + " ami(s) importé(s).", Toast.LENGTH_SHORT).show();
         });
         update.run();
+    }
+
+    private TextView selectionIndicator() {
+        TextView indicator = text("✓", 17, true);
+        indicator.setTextColor(ui.onAccent);
+        indicator.setGravity(Gravity.CENTER);
+        indicator.setPadding(0, 0, 0, 0);
+        android.graphics.drawable.GradientDrawable circle = new android.graphics.drawable.GradientDrawable();
+        circle.setShape(android.graphics.drawable.GradientDrawable.OVAL);
+        circle.setColor(ui.accent);
+        indicator.setBackground(circle);
+        indicator.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
+        return indicator;
     }
 
     /** Places profile badges on successive lines without constraining their text. */
@@ -1175,14 +1241,18 @@ public class MainActivity extends Activity {
     }
 
     private final class SelectionScrollView extends ScrollView {
+        private final LinearLayout importRows;
+        private final List<Friend> importSelection;
         private boolean armed, dragging, selectValue;
+        private LinearLayout rows() { return importRows == null ? friendResults : importRows; }
+        private List<Friend> selection() { return importRows == null ? selectedFriends : importSelection; }
         private float downX, downY, pointerX, pointerY, scrollRemainder;
         private long lastFrame;
         private final List<Friend> originalSelection = new ArrayList<>();
         private Friend anchor, endpoint;
         private final Runnable scrollSelection = new Runnable() {
             @Override public void run() {
-                if (!dragging || !selecting) return;
+                if (!dragging || (importRows == null && !selecting)) return;
                 int[] position = new int[2];
                 getLocationOnScreen(position);
                 float y = pointerY - position[1];
@@ -1204,7 +1274,12 @@ public class MainActivity extends Activity {
             }
         };
 
-        SelectionScrollView() { super(MainActivity.this); }
+        SelectionScrollView() { this(null, null); }
+        SelectionScrollView(LinearLayout rows, List<Friend> selection) {
+            super(MainActivity.this);
+            importRows = rows;
+            importSelection = selection;
+        }
 
         void armSelectionDrag(boolean select, Friend start) {
             armed = true;
@@ -1212,7 +1287,7 @@ public class MainActivity extends Activity {
             anchor = start;
             endpoint = start;
             originalSelection.clear();
-            originalSelection.addAll(selectedFriends);
+            originalSelection.addAll(selection());
         }
 
         void stopSelectionDrag() {
@@ -1226,14 +1301,14 @@ public class MainActivity extends Activity {
         }
 
         private void selectUnderPointer() {
-            if (friendResults == null) return;
+            if (rows() == null) return;
             int[] position = new int[2];
             getLocationOnScreen(position);
             if (pointerX < position[0] || pointerX >= position[0] + getWidth()) return;
             float hitY = Math.max(position[1], Math.min(pointerY, position[1] + getHeight() - 1));
-            for (int i = 0; i < friendResults.getChildCount(); i++) {
-                View row = friendResults.getChildAt(i);
-                if (!(row.getTag() instanceof Friend)) continue;
+            for (int i = 0; i < rows().getChildCount(); i++) {
+                View row = rows().getChildAt(i);
+                if (row.getVisibility() != View.VISIBLE || !row.isEnabled() || !(row.getTag() instanceof Friend)) continue;
                 row.getLocationOnScreen(position);
                 if (pointerX >= position[0] && pointerX < position[0] + row.getWidth()
                         && hitY >= position[1] && hitY < position[1] + row.getHeight()) {
@@ -1247,8 +1322,8 @@ public class MainActivity extends Activity {
         private void updateRange(Friend current) {
             if (current == endpoint) return;
             int start = -1, end = -1, previousEnd = -1;
-            for (int i = 0; i < friendResults.getChildCount(); i++) {
-                Object friend = friendResults.getChildAt(i).getTag();
+            for (int i = 0; i < rows().getChildCount(); i++) {
+                Object friend = rows().getChildAt(i).getTag();
                 if (friend == anchor) start = i;
                 if (friend == current) end = i;
                 if (friend == endpoint) previousEnd = i;
@@ -1257,22 +1332,22 @@ public class MainActivity extends Activity {
             endpoint = current;
             int first = Math.min(start, end), last = Math.max(start, end);
             int previousFirst = Math.min(start, previousEnd), previousLast = Math.max(start, previousEnd);
-            for (int i = 0; i < friendResults.getChildCount(); i++) {
-                View row = friendResults.getChildAt(i);
-                if (!(row.getTag() instanceof Friend)) continue;
+            for (int i = 0; i < rows().getChildCount(); i++) {
+                View row = rows().getChildAt(i);
+                if (row.getVisibility() != View.VISIBLE || !row.isEnabled() || !(row.getTag() instanceof Friend)) continue;
                 Friend friend = (Friend) row.getTag();
                 boolean inRange = i >= first && i <= last;
                 boolean wasInRange = i >= previousFirst && i <= previousLast;
                 if (!inRange && !wasInRange) continue;
                 boolean selected = inRange ? selectValue : !selectValue;
-                if (selectedFriends.contains(friend) != selected) row.performClick();
+                if (selection().contains(friend) != selected) row.performClick();
             }
             // Keep the original order for friends selected before this gesture.
             List<Friend> ordered = new ArrayList<>();
-            for (Friend friend : originalSelection) if (selectedFriends.contains(friend)) ordered.add(friend);
-            for (Friend friend : selectedFriends) if (!ordered.contains(friend)) ordered.add(friend);
-            selectedFriends.clear();
-            selectedFriends.addAll(ordered);
+            for (Friend friend : originalSelection) if (selection().contains(friend)) ordered.add(friend);
+            for (Friend friend : selection()) if (!ordered.contains(friend)) ordered.add(friend);
+            selection().clear();
+            selection().addAll(ordered);
         }
 
         @Override public boolean dispatchTouchEvent(MotionEvent event) {
