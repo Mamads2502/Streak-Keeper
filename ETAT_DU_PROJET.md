@@ -28,7 +28,7 @@ Fonctionnalités présentes dans le code, dont le fonctionnement sur appareil re
 - Recherche repliable et dynamique sur surnom et pseudo Snapchat : casse/accents ignorés, `@` facultatif, correspondances partielles et mots combinés. Compteur filtré, état vide, effacement et fermeture par Retour. Le filtre est réinitialisé au changement de profil et conservé au retour du formulaire ou après rotation.
 - Tri mémorisé globalement : nom A–Z (collation française), plus récents, plus anciens (défaut historique). La recherche conserve le tri choisi.
 - Copie individuelle vers un autre profil : nouveau contact indépendant avec surnom/pseudo conservés et nouvelle date d’ajout ; aucun écrasement ni changement du profil actif. Les profils où l’ami existe déjà sont signalés. `FriendList.copyTo` centralise la copie sans doublons pour les opérations individuelles et globales.
-- Copie de tous les amis d’un autre profil, sans doublons de pseudo (comparaison insensible à la casse, également utilisée lors de l’ajout).
+- Import depuis un autre profil : icône à côté du bouton d’ajout, choix du profil par badges, sélection individuelle ou globale des amis et compteur. Les pseudos déjà présents sont signalés et désactivés ; la copie vérifie à nouveau les doublons sans tenir compte de la casse.
 - Sauvegarde locale et restauration du profil actif au démarrage.
 - Bouton rond à icône de flamme pour ouvrir le formulaire avec les données d’un ami ; bouton « Re-remplir », état du préremplissage et retour aux presets.
 - Après le préremplissage, centrage instantané sans animation du bouton d’envoi ou priorité à une erreur, un champ invalide ou une vérification visible reconnue. Attente de position stable (3 mesures), délai borné à 3 secondes, annulation dès interaction et lors du retour/navigation. « Re-remplir » autorise une nouvelle tentative. Le formulaire reste entièrement accessible et l’envoi manuel.
@@ -52,6 +52,8 @@ Fonctionnalités présentes dans le code, dont le fonctionnement sur appareil re
 
 ## Problèmes connus et limites
 
+- Import sélectif compilé et analysé ; badges, sélection, listes longues et doublons restent à tester sur appareil ou Waydroid.
+
 - Validation de la liste compacte et des actions par ami le 29 octobre 2026 : `./gradlew assembleDebug lintDebug --offline` réussit ; APK debug vérifié (intégrité ZIP et signature). Tests Java : 18 scénarios passent (tri, données historiques, recherche, conservation de la liste source et préférence invalide, copie indépendante, absence d’écrasement et collisions lors de la modification). La barre à icônes et sa disposition adaptative sont également compilées et analysées ; le rendu, le clavier et les interactions restent à tester sur Waydroid.
 - Contrastes du thème clair déjà calculés : texte principal 15,11:1, texte secondaire sur fond 5,01:1, bouton principal 6,29:1.
 - Le fonctionnement sur appareil et le préremplissage réel du formulaire n’ont pas été testés lors de cette modification.
@@ -61,7 +63,7 @@ Fonctionnalités présentes dans le code, dont le fonctionnement sur appareil re
 - Le centrage reconnaît les contrôles HTML invalides, certains bandeaux de consentement et les cadres reCAPTCHA visibles ; il ne lit pas le contenu des iframes externes. Un obstacle non reconnu peut nécessiter un défilement manuel. Un espace vide en bas est ajouté pour permettre de centrer le bouton sans le déplacer.
 - Le site peut bloquer les WebViews ou modifier son formulaire. La conservation des cookies ne garantit pas l’absence de CAPTCHA.
 - Seules les conversations privées sont visées ; le choix de groupe n’est pas traité.
-- Copie individuelle ou import global disponibles ; pas de sélection multiple. Aucune récupération automatique des contacts ou photos depuis Snapchat n’est implémentée.
+- Aucune récupération automatique des contacts ou photos depuis Snapchat n’est implémentée.
 - La validation des saisies se limite principalement aux champs obligatoires et aux doublons d’amis ; les formats d’e-mail et de téléphone ne sont pas vérifiés.
 
 ## Prochaines étapes

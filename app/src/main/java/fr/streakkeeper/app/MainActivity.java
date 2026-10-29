@@ -14,6 +14,7 @@ import android.view.Gravity;
 import android.view.MotionEvent;
 import android.os.Bundle;
 import android.view.View;
+import android.view.ViewGroup;
 import android.webkit.CookieManager;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceError;
@@ -320,9 +321,15 @@ public class MainActivity extends Activity {
             heading.addView(count);
             page.addView(heading);
             gap(page, 12);
-            page.addView(primaryButton("+ Ajouter un ami", this::addFriend), new LinearLayout.LayoutParams(-1, -2));
-            gap(page, 8);
-            page.addView(button("Copier depuis un autre profil", this::copyFriends), new LinearLayout.LayoutParams(-1, -2));
+            LinearLayout actions = horizontal();
+            actions.addView(primaryButton("+ Ajouter un ami", this::addFriend),
+                    new LinearLayout.LayoutParams(0, -2, 1));
+            ImageButton copy = friendToolIcon(R.drawable.ic_copy, "Importer des amis depuis un autre profil");
+            copy.setOnClickListener(view -> copyFriends());
+            LinearLayout.LayoutParams copyParams = new LinearLayout.LayoutParams(dp(48), dp(48));
+            copyParams.leftMargin = dp(8);
+            actions.addView(copy, copyParams);
+            page.addView(actions);
             gap(page, 16);
             addFriendTools(page);
             friendResults = vertical();
@@ -798,18 +805,127 @@ public class MainActivity extends Activity {
             Toast.makeText(this, "Crée d’abord un autre profil.", Toast.LENGTH_SHORT).show();
             return;
         }
-        String[] labels = new String[others.size()];
-        for (int i = 0; i < others.size(); i++) labels[i] = others.get(i).name;
-        showDialog(new AlertDialog.Builder(this).setTitle("Importer tous les amis de…")
-                .setItems(labels, (dialog, which) -> {
-                    int count = 0;
-                    for (Friend f : others.get(which).friends) {
-                        if (FriendList.copyTo(f, active.friends, Friend::new)) count++;
-                    }
-                    persist();
-                    renderHome();
-                    Toast.makeText(this, count + " ami(s) importé(s).", Toast.LENGTH_SHORT).show();
-                }));
+        LinearLayout content = vertical();
+        content.setPadding(dp(20), dp(8), dp(20), dp(12));
+        content.addView(mutedText("Choisis le profil contenant les amis à importer.", 14));
+        gap(content, 12);
+        ProfileBadgeLayout badges = new ProfileBadgeLayout();
+        for (Profile source : others) {
+            Button badge = button(source.name, () -> {});
+            badge.setBackground(new android.graphics.drawable.RippleDrawable(
+                    android.content.res.ColorStateList.valueOf(ui.accentSoft),
+                    ui.shape(ui.accentSoft, ui.accent), null));
+            badge.setTextColor(ui.accent);
+            badge.setElevation(dp(2));
+            badge.setOnClickListener(view -> {
+                AlertDialog dialog = (AlertDialog) badge.getTag();
+                dialog.dismiss();
+                selectFriendsToImport(source, active);
+            });
+            badges.addView(badge);
+        }
+        content.addView(badges);
+        ScrollView scroll = new ScrollView(this);
+        scroll.addView(content);
+        AlertDialog dialog = showDialog(new AlertDialog.Builder(this).setTitle("Importer les amis de…")
+                .setView(scroll).setNegativeButton("Annuler", null));
+        for (int i = 0; i < badges.getChildCount(); i++) badges.getChildAt(i).setTag(dialog);
+    }
+
+    private void selectFriendsToImport(Profile source, Profile destination) {
+        LinearLayout content = vertical();
+        content.setPadding(dp(20), dp(8), dp(20), dp(12));
+        content.addView(mutedText("Choisis les amis à importer vers " + destination.name + ".", 14));
+        gap(content, 8);
+        LinearLayout list = vertical();
+        List<CheckBox> choices = new ArrayList<>();
+        List<Friend> available = new ArrayList<>();
+        if (source.friends.isEmpty()) list.addView(mutedText("Ce profil n’a pas encore d’amis.", 14));
+        for (Friend friend : source.friends) {
+            boolean duplicate = hasFriend(destination, friend.username);
+            CheckBox choice = new CheckBox(this);
+            choice.setText(friend.name + " · @" + friend.username + (duplicate ? " — déjà présent" : ""));
+            choice.setTextColor(duplicate ? ui.muted : ui.text);
+            choice.setButtonTintList(android.content.res.ColorStateList.valueOf(ui.accent));
+            choice.setMinHeight(dp(48));
+            choice.setEnabled(!duplicate);
+            list.addView(choice);
+            if (!duplicate) { choices.add(choice); available.add(friend); }
+        }
+        ScrollView scroll = new ScrollView(this);
+        scroll.addView(list);
+        int listHeight = Math.min(dp(320), getResources().getDisplayMetrics().heightPixels / 3);
+        content.addView(scroll, new LinearLayout.LayoutParams(-1, listHeight));
+        CheckBox selectAll = new CheckBox(this);
+        selectAll.setText("Tout sélectionner");
+        selectAll.setTextColor(ui.text);
+        selectAll.setButtonTintList(android.content.res.ColorStateList.valueOf(ui.accent));
+        selectAll.setEnabled(!choices.isEmpty());
+        content.addView(selectAll);
+        Button importButton = primaryButton("Importer (0)", () -> {});
+        content.addView(importButton, new LinearLayout.LayoutParams(-1, -2));
+        AlertDialog dialog = showDialog(new AlertDialog.Builder(this)
+                .setTitle("Amis de " + source.name).setView(content)
+                .setNegativeButton("Annuler", null));
+        boolean[] updating = {false};
+        Runnable update = () -> {
+            int count = 0;
+            for (CheckBox choice : choices) if (choice.isChecked()) count++;
+            updating[0] = true;
+            selectAll.setChecked(!choices.isEmpty() && count == choices.size());
+            updating[0] = false;
+            importButton.setText("Importer (" + count + ")");
+            importButton.setEnabled(count > 0);
+            importButton.setAlpha(count > 0 ? 1f : .5f);
+        };
+        for (CheckBox choice : choices) choice.setOnCheckedChangeListener((view, checked) -> update.run());
+        selectAll.setOnCheckedChangeListener((view, checked) -> {
+            if (updating[0]) return;
+            for (CheckBox choice : choices) choice.setChecked(checked);
+            update.run();
+        });
+        importButton.setOnClickListener(view -> {
+            int count = 0;
+            for (int i = 0; i < choices.size(); i++) {
+                if (choices.get(i).isChecked() && FriendList.copyTo(available.get(i), destination.friends, Friend::new)) count++;
+            }
+            if (count > 0) { persist(); renderHome(); }
+            dialog.dismiss();
+            Toast.makeText(this, count + " ami(s) importé(s).", Toast.LENGTH_SHORT).show();
+        });
+        update.run();
+    }
+
+    /** Places profile badges on successive lines without constraining their text. */
+    private final class ProfileBadgeLayout extends ViewGroup {
+        ProfileBadgeLayout() { super(MainActivity.this); }
+
+        @Override protected void onMeasure(int widthSpec, int heightSpec) {
+            int width = MeasureSpec.getSize(widthSpec);
+            int x = 0, y = 0, rowHeight = 0, spacing = dp(8);
+            for (int i = 0; i < getChildCount(); i++) {
+                View child = getChildAt(i);
+                child.measure(MeasureSpec.makeMeasureSpec(width, MeasureSpec.AT_MOST),
+                        MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED));
+                int childWidth = child.getMeasuredWidth();
+                if (x > 0 && x + childWidth > width) { y += rowHeight + spacing; x = 0; rowHeight = 0; }
+                x += childWidth + spacing;
+                rowHeight = Math.max(rowHeight, child.getMeasuredHeight());
+            }
+            setMeasuredDimension(resolveSize(width, widthSpec), resolveSize(y + rowHeight, heightSpec));
+        }
+
+        @Override protected void onLayout(boolean changed, int left, int top, int right, int bottom) {
+            int x = 0, y = 0, rowHeight = 0, spacing = dp(8), width = right - left;
+            for (int i = 0; i < getChildCount(); i++) {
+                View child = getChildAt(i);
+                int w = child.getMeasuredWidth(), h = child.getMeasuredHeight();
+                if (x > 0 && x + w > width) { y += rowHeight + spacing; x = 0; rowHeight = 0; }
+                child.layout(x, y, x + w, y + h);
+                x += w + spacing;
+                rowHeight = Math.max(rowHeight, h);
+            }
+        }
     }
 
     private void removeFriend(Profile owner, Friend f) {
