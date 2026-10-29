@@ -1355,13 +1355,46 @@ public class MainActivity extends Activity {
     }
 
     private LinearLayout settingsSection(LinearLayout page, String title, String description) {
-        page.addView(text(title, 17, true));
-        TextView subtitle = mutedText(description, 13);
-        page.addView(subtitle);
-        gap(page, 8);
+        LinearLayout card = vertical();
+        card.setBackground(ui.shape(ui.surface, ui.border));
+        page.addView(card, new LinearLayout.LayoutParams(-1, -2));
+
+        LinearLayout header = horizontal();
+        header.setPadding(dp(16), dp(14), dp(12), dp(14));
+        header.setMinimumHeight(dp(64));
+        header.setBackground(new android.graphics.drawable.RippleDrawable(
+                ColorStateList.valueOf(ui.accentSoft), ui.shape(ui.surface, Color.TRANSPARENT), null));
+        View accent = new View(this);
+        android.graphics.drawable.GradientDrawable accentShape = new android.graphics.drawable.GradientDrawable();
+        accentShape.setColor(ui.accent);
+        accentShape.setCornerRadius(dp(3));
+        accent.setBackground(accentShape);
+        LinearLayout.LayoutParams accentParams = new LinearLayout.LayoutParams(dp(4), dp(36));
+        accentParams.setMarginEnd(dp(12));
+        header.addView(accent, accentParams);
+        LinearLayout words = vertical();
+        words.addView(text(title, 17, true));
+        words.addView(mutedText(description, 13));
+        header.addView(words, new LinearLayout.LayoutParams(0, -2, 1));
+        TextView chevron = text("⌃", 24, true);
+        chevron.setTextColor(ui.accent);
+        chevron.setGravity(Gravity.CENTER);
+        chevron.setPadding(0, 0, 0, 0);
+        chevron.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
+        header.addView(chevron, new LinearLayout.LayoutParams(dp(40), dp(48)));
+        card.addView(header);
         LinearLayout section = vertical();
-        section.setBackground(ui.shape(ui.surface, ui.border));
-        page.addView(section, new LinearLayout.LayoutParams(-1, -2));
+        card.addView(section, new LinearLayout.LayoutParams(-1, -2));
+        header.setFocusable(true);
+        header.setContentDescription(title + ", déplié. Appuyer pour replier.");
+        header.setOnClickListener(view -> {
+            boolean expanded = section.getVisibility() != View.VISIBLE;
+            section.setVisibility(expanded ? View.VISIBLE : View.GONE);
+            chevron.setText(expanded ? "⌃" : "⌄");
+            header.setContentDescription(title + (expanded ? ", déplié. Appuyer pour replier."
+                    : ", replié. Appuyer pour déplier."));
+            header.sendAccessibilityEvent(android.view.accessibility.AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED);
+        });
         return section;
     }
 
