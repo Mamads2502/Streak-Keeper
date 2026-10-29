@@ -41,7 +41,7 @@ function run(options = {}) {
     globalThis.getComputedStyle=()=>({display:'block',visibility:'visible',opacity:'1'});
     globalThis.setTimeout=f=>{queue.push(f);return queue.length;};
     globalThis.clearTimeout=()=>{};
-    eval(SCRIPT);
+    eval(SCRIPT.replace("__STREAK_CHECK_FIELDS__", options.manualFill ? "false" : "true"));
     if (options.touch && listeners.touchstart) listeners.touchstart();
     let limit=30;
     while(queue.length && limit--) queue.shift()();
@@ -62,6 +62,8 @@ function check(name, options, expected) {
 }
 check('Submit centered once',{},'submit');
 check('Invalid field before submit',{invalid:true},'field');
+check('Manual fill centers submit despite empty required fields',{invalid:true,manualFill:true},'submit');
+check('Manual fill still prioritizes errors',{invalid:true,manualFill:true,error:true},'error');
 check('Visible error before invalid field',{invalid:true,error:true},'error');
 check('Consent before submit',{consent:true},'consent');
 check('Unsolved CAPTCHA',{captcha:true},'captcha');

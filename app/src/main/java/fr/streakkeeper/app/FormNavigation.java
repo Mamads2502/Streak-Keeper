@@ -39,7 +39,7 @@ final class FormNavigation {
                 if (consent) return consent;
                 const error = first(form, '[aria-invalid="true"], .notification-error, [role="alert"]');
                 if (error) return error;
-                for (const field of form.querySelectorAll('input, select, textarea')) {
+                for (const field of (__STREAK_CHECK_FIELDS__ ? form.querySelectorAll('input, select, textarea') : [])) {
                     if (field.disabled) continue;
                     const invalid = (field.validity && !field.validity.valid) ||
                         (field.getAttribute('aria-required') === 'true' && !String(field.value || '').trim());

@@ -82,6 +82,9 @@ public class MainActivity extends Activity {
     private LinearLayout drawerPanel;
     private LinearLayout drawerProfiles;
     private Button menuButton;
+    private ImageButton settingsButton;
+    private Button procedureBack, procedureNext;
+    private boolean automaticAdvance, procedureFinished, automaticFill, automaticCenter;
     private WebView browser;
     private TextView browserStatus;
     private boolean selecting;
@@ -199,22 +202,12 @@ public class MainActivity extends Activity {
         topBar.addView(browserContext);
         gap(topBar, 12);
         LinearLayout actions = horizontal();
-        Button back = button("← Retour", this::showHome);
-        back.setContentDescription("Retour aux profils et amis");
-        Button refill = primaryButton("Re-remplir", () -> {
-            if (submissionObserved) {
-                setBrowserStatus("Le bouton d’envoi a déjà été activé pour cette demande.");
-                return;
-            }
-            cancelFormScroll();
-            formTouched = false;
-            lockFormInteractions();
-            fillForm(0);
-        });
+        procedureBack = button("Retour au menu principal", this::showHome);
+        procedureNext = primaryButton("Suivant", this::advanceManually);
         LinearLayout.LayoutParams backParams = new LinearLayout.LayoutParams(0, -2, 1);
         backParams.setMarginEnd(dp(8));
-        actions.addView(back, backParams);
-        actions.addView(refill, new LinearLayout.LayoutParams(0, -2, 1));
+        actions.addView(procedureBack, backParams);
+        actions.addView(procedureNext, new LinearLayout.LayoutParams(0, -2, 1));
         topBar.addView(actions);
         gap(topBar, 12);
         browserStatus = mutedText("Vérifie les informations avant l’envoi manuel.", 13);
@@ -268,7 +261,8 @@ public class MainActivity extends Activity {
                     applyFormTheme();
                     if (pendingProfile != null && !submissionObserved) {
                         installSubmitObserver();
-                        fillForm(0);
+                        if (automaticFill) fillForm(0);
+                        else finishFormPreparation();
                     }
                 } else if (pendingFriend != null && formInteractionLocked) {
                     cancelFormScroll();
@@ -314,6 +308,14 @@ public class MainActivity extends Activity {
         toolbar.addView(menuButton, new LinearLayout.LayoutParams(dp(48), dp(48)));
         TextView title = text("Streak keeper", 22, true);
         toolbar.addView(title, new LinearLayout.LayoutParams(0, -2, 1));
+        settingsButton = friendToolIcon(R.drawable.ic_settings, "Paramètres");
+        android.graphics.drawable.GradientDrawable settingsCircle = new android.graphics.drawable.GradientDrawable();
+        settingsCircle.setShape(android.graphics.drawable.GradientDrawable.OVAL);
+        settingsCircle.setColor(ui.surface);
+        settingsButton.setBackground(new android.graphics.drawable.RippleDrawable(
+                android.content.res.ColorStateList.valueOf(ui.accentSoft), settingsCircle, null));
+        settingsButton.setOnClickListener(view -> showSettings());
+        toolbar.addView(settingsButton, new LinearLayout.LayoutParams(dp(48), dp(48)));
         selectionClose = button("×", () -> { exitSelection(); renderHome(); });
         selectionClose.setTextSize(26);
         selectionClose.setContentDescription("Quitter la sélection");
@@ -1050,6 +1052,7 @@ public class MainActivity extends Activity {
         drawerLayout.setDrawerLockMode(selecting ? DrawerLayout.LOCK_MODE_LOCKED_CLOSED : DrawerLayout.LOCK_MODE_UNLOCKED);
         selectionClose.setVisibility(selecting ? View.VISIBLE : View.GONE);
         menuButton.setVisibility(selecting ? View.GONE : View.VISIBLE);
+        settingsButton.setVisibility(selecting ? View.GONE : View.VISIBLE);
         selectionBar.setVisibility(selecting ? View.VISIBLE : View.GONE);
         selectionAction.setText("🔥  Préparer (" + selectedFriends.size() + ")");
         selectionAction.setEnabled(!selectedFriends.isEmpty());
@@ -1062,8 +1065,48 @@ public class MainActivity extends Activity {
         if (selectionBar != null) updateSelectionUi();
     }
 
+    private void showSettings() {
+        LinearLayout options = vertical();
+        options.setPadding(dp(20), dp(8), dp(20), dp(8));
+        addSetting(options, "Passage automatique au formulaire suivant", "automaticAdvance");
+        addSetting(options, "Préremplissage automatique", "automaticFill");
+        addSetting(options, "Centrage automatique", "automaticCenter");
+        showDialog(new AlertDialog.Builder(this).setTitle("Paramètres")
+                .setView(options).setPositiveButton("Fermer", null));
+    }
+
+    private void addSetting(LinearLayout options, String label, String key) {
+        CheckBox option = new CheckBox(this);
+        option.setText(label);
+        option.setChecked(getSharedPreferences(PREFERENCES_FILE, MODE_PRIVATE).getBoolean(key, true));
+        option.setPadding(0, dp(12), 0, dp(12));
+        option.setOnCheckedChangeListener((view, checked) ->
+                getSharedPreferences(PREFERENCES_FILE, MODE_PRIVATE).edit().putBoolean(key, checked).apply());
+        options.addView(option, new LinearLayout.LayoutParams(-1, -2));
+    }
+
+    private void updateProcedureActions() {
+        procedureBack.setText(procedureFinished ? "✓  Retour au menu principal" : "Retour au menu principal");
+        int color = Color.parseColor(procedureFinished ? "#18713B" : "#B3261E");
+        procedureBack.setBackground(ui.shape(color, Color.TRANSPARENT));
+        procedureBack.setTextColor(Color.WHITE);
+        boolean showNext = !automaticAdvance && !procedureFinished && requestIndex + 1 < requestQueue.size();
+        procedureNext.setVisibility(showNext ? View.VISIBLE : View.GONE);
+        LinearLayout.LayoutParams params = (LinearLayout.LayoutParams) procedureBack.getLayoutParams();
+        params.setMarginEnd(showNext ? dp(8) : 0);
+        procedureBack.setLayoutParams(params);
+    }
+
+    private void advanceManually() {
+        if (procedureFinished || automaticAdvance || requestIndex + 1 >= requestQueue.size()) return;
+        requestIndex++;
+        prepareCurrent(requestQueue.get(requestIndex));
+    }
+
     private void startSelectedRequests() {
         if (selectedFriends.isEmpty()) return;
+        automaticAdvance = getSharedPreferences(PREFERENCES_FILE, MODE_PRIVATE).getBoolean("automaticAdvance", true);
+        procedureFinished = false;
         requestQueue.clear();
         requestQueue.addAll(selectedFriends);
         requestIndex = 0;
@@ -1071,6 +1114,8 @@ public class MainActivity extends Activity {
     }
 
     private void prepare(Friend friend) {
+        automaticAdvance = getSharedPreferences(PREFERENCES_FILE, MODE_PRIVATE).getBoolean("automaticAdvance", true);
+        procedureFinished = false;
         requestQueue.clear();
         requestQueue.add(friend);
         requestIndex = 0;
@@ -1087,9 +1132,13 @@ public class MainActivity extends Activity {
                 .hideSoftInputFromWindow(home.getWindowToken(), 0);
         cancelFormScroll();
         formTouched = false;
-        lockFormInteractions();
+        SharedPreferences settings = getSharedPreferences(PREFERENCES_FILE, MODE_PRIVATE);
+        automaticFill = settings.getBoolean("automaticFill", true);
+        automaticCenter = settings.getBoolean("automaticCenter", true);
+        if (automaticFill || automaticCenter) lockFormInteractions();
         pendingProfile = active;
         pendingFriend = friend;
+        updateProcedureActions();
         browserContext.setText(active.name + " · @" + friend.username + " · " + (requestIndex + 1) + "/" + requestQueue.size());
         setBrowserStatus("");
         drawerLayout.closeDrawer(drawerPanel, false);
@@ -1120,22 +1169,15 @@ public class MainActivity extends Activity {
                 if (session != requestSession || pendingFriend == null || submissionTransitioned) return;
                 if (generation == formGeneration && "2".equals(result)) {
                     submissionTransitioned = true;
-                    if (requestIndex + 1 < requestQueue.size()) {
+                    if (automaticAdvance && requestIndex + 1 < requestQueue.size()) {
                         requestIndex++;
                         prepareCurrent(requestQueue.get(requestIndex));
+                    } else if (requestIndex + 1 >= requestQueue.size()) {
+                        procedureFinished = true;
+                        setBrowserStatus("Réponse du site détectée pour la dernière demande.");
+                        updateProcedureActions();
                     } else {
-                        setBrowserStatus("Réponse du site détectée.");
-                        LinearLayout finishActions = horizontal();
-                        finishActions.setPadding(dp(20), dp(8), dp(20), dp(16));
-                        TextView thanks = mutedText("merci Mamads <3", 10);
-                        finishActions.addView(thanks, new LinearLayout.LayoutParams(0, -2, 1));
-                        Button homeButton = primaryButton("Retour à l’accueil", () -> {});
-                        finishActions.addView(homeButton);
-                        AlertDialog finished = showDialog(new AlertDialog.Builder(this)
-                                .setTitle("🔥 Les flammes sont entre de bonnes mains !")
-                                .setMessage("Les demandes ont été envoyées. Retourne à l’accueil pour retrouver tes amis.")
-                                .setView(finishActions));
-                        homeButton.setOnClickListener(view -> { finished.dismiss(); showHome(); });
+                        setBrowserStatus("Réponse du site détectée. Passe au formulaire suivant ou retourne au menu principal.");
                     }
                 } else {
                     if (generation == formGeneration && "1".equals(result)) {
@@ -1203,18 +1245,23 @@ public class MainActivity extends Activity {
                     }, 800);
                 } else {
                     setBrowserStatus("");
-                    if (formInteractionLocked && !formTouched && isSupportForm(browser.getUrl())) {
-                        browser.evaluateJavascript(FormNavigation.SCRIPT.replace(
-                                "__STREAK_SCROLL_DONE__", JSONObject.quote(scrollDoneMarker)), null);
-                    } else {
-                        unlockFormInteractions();
-                    }
+                    finishFormPreparation();
                 }
             } catch (Exception e) {
                 unlockFormInteractions();
                 setBrowserStatus("Préremplissage indisponible : remplis le formulaire manuellement.");
             }
         });
+    }
+
+    private void finishFormPreparation() {
+        if (automaticCenter && formInteractionLocked && !formTouched && isSupportForm(browser.getUrl())) {
+            browser.evaluateJavascript(FormNavigation.SCRIPT.replace("__STREAK_CHECK_FIELDS__",
+                    automaticFill ? "true" : "false").replace(
+                    "__STREAK_SCROLL_DONE__", JSONObject.quote(scrollDoneMarker)), null);
+        } else {
+            unlockFormInteractions();
+        }
     }
 
     private void lockFormInteractions() {
