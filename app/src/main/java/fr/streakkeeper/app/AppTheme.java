@@ -209,6 +209,7 @@ final class AppTheme {
         String palette = "--sk-bg:" + hex(background) + ";--sk-surface:" + hex(surface)
                 + ";--sk-text:" + hex(text) + ";--sk-muted:" + hex(muted)
                 + ";--sk-border:" + hex(border) + ";--sk-accent:" + hex(accentText)
+                + ";--sk-accent-fill:" + hex(accent)
                 + ";--sk-on-accent:" + hex(onAccent) + ";";
         return ":root{color-scheme:" + (dark ? "dark;" : "light;") + palette + "}"
                 + "body{background:var(--sk-bg)!important;color:var(--sk-text)!important;"
@@ -226,7 +227,22 @@ final class AppTheme {
                 + "#new_request input[type=submit],#new_request button[type=submit]{"
                 + "background:#000000!important;color:#FFFFFF!important;"
                 + "border:0!important;border-radius:14px!important;min-height:48px;padding:12px 20px;}"
-                + "#new_request a{color:var(--sk-text);text-decoration:underline;}";
+                + "#new_request a{color:var(--sk-text);text-decoration:underline;}"
+                + (dark
+                ? "html,body{background-color:var(--sk-bg)!important;color:var(--sk-text)!important;}"
+                // Zendesk has white panels around some fields outside #new_request itself.
+                // Make those first-party page surfaces transparent so the dark page shows through.
+                + "body *{color:var(--sk-text)!important;background-color:transparent!important;}"
+                + "form#new_request{background:var(--sk-surface)!important;color:var(--sk-text)!important;"
+                + "border-color:var(--sk-border)!important;}"
+                + "#new_request input:not([type=hidden]):not([type=checkbox]):not([type=radio]):not([type=submit]),"
+                + "#new_request textarea,#new_request select,#new_request option,#new_request .nesty-input,"
+                + "#new_request [role=combobox]{background:var(--sk-surface)!important;"
+                + "color:var(--sk-text)!important;}"
+                + "#new_request :is(input,textarea)::placeholder{color:var(--sk-muted)!important;}"
+                + "#new_request input[type=submit],#new_request button[type=submit]{"
+                + "background:var(--sk-accent-fill)!important;color:var(--sk-on-accent)!important;}"
+                : "");
     }
 
     private static String hex(int color) { return String.format(Locale.ROOT, "#%06X", color & 0xFFFFFF); }
