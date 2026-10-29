@@ -152,7 +152,7 @@ Une fois l'APK créé, tu peux aussi le transférer sur le téléphone et l'ouvr
 
 1. Ouvrir le menu ☰, puis « Ajouter un profil » en bas du menu. Renseigner le pseudo Snapchat, l’e-mail et le téléphone. Pour saisir une description, cocher « Ajouter une description à la demande ».
 2. Ajouter un ami avec son nom affiché et son pseudo Snapchat.
-3. Cliquer sur **Préparer** à côté de cet ami.
+3. Toucher le **bouton rond avec une flamme** à droite de cet ami.
 4. Attendre l'ouverture du formulaire dans le `WebView`.
 5. Vérifier les valeurs préremplies ; utiliser **Re-remplir** si nécessaire.
 6. Vérifier la description et toute demande de reCAPTCHA.
@@ -200,6 +200,16 @@ mkdir -p /tmp/streak-friend-tests
 javac -d /tmp/streak-friend-tests app/src/main/java/fr/streakkeeper/app/FriendList.java tests/FriendListTest.java
 java -cp /tmp/streak-friend-tests fr.streakkeeper.app.FriendListTest
 ```
+
+### Actions sur un ami
+
+Chaque ligne affiche le surnom et le pseudo Snapchat, une flamme ronde pour préparer la demande, puis un menu ⋮. Les deux commandes ont des cibles tactiles de 48 dp, des infobulles et des libellés pour les lecteurs d’écran.
+
+Le menu propose **Modifier**, **Copier vers un autre profil** et **Supprimer…**. La suppression demande confirmation. La modification conserve la date d’ajout ; un nom à afficher vide reprend le pseudo Snapchat. Un pseudo déjà utilisé dans le profil est refusé sans fermer le dialogue de modification.
+
+La copie propose les autres profils et signale ceux où le pseudo existe déjà. Elle conserve le surnom et le pseudo dans une nouvelle entrée indépendante, avec une nouvelle date d’ajout ; elle ne remplace jamais un ami existant et ne change pas le profil actif. L’import de toute une liste reste disponible.
+
+À tester sur Waydroid : flamme et menu avec un nom long/grands caractères, annulation et validation de modification/suppression, pseudo doublon (y compris casse différente), copie avec zéro/un/plusieurs profils destinataires, conservation après redémarrage, puis modification de la copie sans effet sur l’original.
 
 ## 7. Dépannage rapide
 

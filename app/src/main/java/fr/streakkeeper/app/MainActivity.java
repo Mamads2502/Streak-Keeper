@@ -451,26 +451,118 @@ public class MainActivity extends Activity {
                 empty.addView(mutedText("Ajoute un ami ou copie ceux d’un autre profil.", 14));
                 friendResults.addView(empty);
             }
-            for (Friend friend : matches) {
-                LinearLayout friendCard = card();
-                LinearLayout identity = horizontal();
-                LinearLayout labels = vertical();
-                labels.addView(text(friend.name, 17, true));
-                labels.addView(mutedText("@" + friend.username, 13));
-                identity.addView(labels, new LinearLayout.LayoutParams(0, -2, 1));
-                Button remove = button("×", () -> removeFriend(friend));
-                ui.button(remove, AppTheme.ButtonStyle.QUIET);
-                remove.setTextSize(24);
-                remove.setPadding(0, 0, 0, 0);
-                remove.setContentDescription("Supprimer l’ami " + friend.name);
-                identity.addView(remove, new LinearLayout.LayoutParams(dp(48), dp(48)));
-                friendCard.addView(identity);
-                gap(friendCard, 12);
-                friendCard.addView(button("Préparer la demande →", () -> prepare(friend)), new LinearLayout.LayoutParams(-1, -2));
-                LinearLayout.LayoutParams row = new LinearLayout.LayoutParams(-1, -2);
-                row.bottomMargin = dp(12);
-                friendResults.addView(friendCard, row);
+        for (Friend friend : matches) {
+            Profile owner = active;
+            LinearLayout row = horizontal();
+            row.setBackground(ui.shape(ui.surface, ui.border));
+            row.setPadding(dp(14), dp(10), dp(8), dp(10));
+            LinearLayout labels = vertical();
+            TextView name = text(friend.name, 16, true);
+            name.setMaxLines(2);
+            name.setEllipsize(TextUtils.TruncateAt.END);
+            name.setContentDescription(friend.name);
+            TextView username = mutedText("@" + friend.username, 13);
+            username.setSingleLine(true);
+            username.setEllipsize(TextUtils.TruncateAt.END);
+            labels.addView(name);
+            labels.addView(username);
+            labels.setPadding(0, 0, dp(8), 0);
+            row.addView(labels, new LinearLayout.LayoutParams(0, -2, 1));
+
+            ImageButton prepare = friendToolIcon(R.drawable.ic_flame,
+                    "Préparer la demande pour " + friend.name + ", @" + friend.username);
+            android.graphics.drawable.GradientDrawable circle = new android.graphics.drawable.GradientDrawable();
+            circle.setShape(android.graphics.drawable.GradientDrawable.OVAL);
+            circle.setColor(ui.accentSoft);
+            prepare.setBackground(new android.graphics.drawable.RippleDrawable(
+                    android.content.res.ColorStateList.valueOf(ui.border), circle, null));
+            prepare.setImageTintList(android.content.res.ColorStateList.valueOf(ui.accent));
+            prepare.setOnClickListener(view -> prepare(friend));
+            row.addView(prepare, new LinearLayout.LayoutParams(dp(48), dp(48)));
+            ImageButton more = friendToolIcon(R.drawable.ic_more,
+                    "Options pour " + friend.name + ", @" + friend.username);
+            more.setOnClickListener(view -> showFriendOptions(view, owner, friend));
+            LinearLayout.LayoutParams options = new LinearLayout.LayoutParams(dp(48), dp(48));
+            options.setMarginStart(dp(4));
+            row.addView(more, options);
+            LinearLayout.LayoutParams layout = new LinearLayout.LayoutParams(-1, -2);
+            layout.bottomMargin = dp(8);
+            friendResults.addView(row, layout);
+        }
+    }
+
+    private void showFriendOptions(View anchor, Profile owner, Friend friend) {
+        PopupMenu menu = new PopupMenu(this, anchor);
+        menu.getMenu().add("Modifier").setOnMenuItemClickListener(item -> {
+            editFriend(owner, friend);
+            return true;
+        });
+        menu.getMenu().add("Copier vers un autre profil").setOnMenuItemClickListener(item -> {
+            copyFriend(owner, friend);
+            return true;
+        });
+        menu.getMenu().add("Supprimer…").setOnMenuItemClickListener(item -> {
+            removeFriend(owner, friend);
+            return true;
+        });
+        menu.show();
+    }
+
+    private void editFriend(Profile owner, Friend friend) {
+        LinearLayout fields = vertical();
+        fields.setPadding(dp(18), dp(8), dp(18), dp(8));
+        EditText username = input(fields, "Pseudo Snapchat de l’ami", friend.username);
+        EditText alias = input(fields, "Nom à afficher (facultatif)", friend.name);
+        ScrollView scroll = new ScrollView(this);
+        scroll.addView(fields);
+        AlertDialog dialog = showDialog(new AlertDialog.Builder(this).setTitle("Modifier l’ami")
+                .setView(scroll).setNegativeButton("Annuler", null).setPositiveButton("Enregistrer", null));
+        dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(view -> {
+            if (blank(username)) {
+                username.setError("Renseigne le pseudo Snapchat.");
+                username.requestFocus();
+                return;
             }
+            String value = value(username);
+            if (FriendList.containsUsername(owner.friends, value, friend)) {
+                username.setError("Ce pseudo est déjà présent dans ce profil.");
+                username.requestFocus();
+                return;
+            }
+            friend.username = value;
+            friend.name = blank(alias) ? value : value(alias);
+            persist();
+            renderHome();
+            dialog.dismiss();
+        });
+    }
+
+    private void copyFriend(Profile owner, Friend friend) {
+        List<Profile> destinations = new ArrayList<>();
+        for (Profile profile : profiles) if (profile != owner) destinations.add(profile);
+        if (destinations.isEmpty()) {
+            showDialog(new AlertDialog.Builder(this).setTitle("Aucun autre profil")
+                    .setMessage("Ajoute un autre profil depuis le menu ☰ pour y copier cet ami.")
+                    .setPositiveButton("Compris", null));
+            return;
+        }
+        String[] labels = new String[destinations.size()];
+        for (int i = 0; i < destinations.size(); i++) {
+            Profile destination = destinations.get(i);
+            labels[i] = destination.name + " · @" + destination.username
+                    + (hasFriend(destination, friend.username) ? " — déjà présent" : "");
+        }
+        showDialog(new AlertDialog.Builder(this).setTitle("Copier @" + friend.username + " vers…")
+                .setNegativeButton("Annuler", null)
+                .setItems(labels, (dialog, index) -> {
+                    Profile destination = destinations.get(index);
+                    if (!FriendList.copyTo(friend, destination.friends, Friend::new)) {
+                        Toast.makeText(this, "Cet ami est déjà présent dans ce profil.", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+                    persist();
+                    Toast.makeText(this, "Ami copié vers " + destination.name, Toast.LENGTH_SHORT).show();
+                }));
     }
 
     private void showGuide() {
@@ -478,7 +570,7 @@ public class MainActivity extends Activity {
         content.setPadding(dp(24), dp(8), dp(24), dp(16));
         String[][] steps = {
                 {"1. Choisis ton profil", "Ouvre ☰ pour créer ou sélectionner un profil. Le menu ⋮ permet de le modifier."},
-                {"2. Prépare une demande", "Ajoute un ami ou copie une liste, puis touche « Préparer la demande »."},
+                {"2. Prépare une demande", "Ajoute un ami ou copie une liste, puis touche la flamme à droite de son nom."},
                 {"3. Vérifie et envoie", "Relis le formulaire Snapchat, complète le CAPTCHA si demandé, puis envoie toi-même."}
         };
         for (String[] step : steps) {
@@ -689,8 +781,7 @@ public class MainActivity extends Activity {
     }
 
     private boolean hasFriend(Profile p, String username) {
-        for (Friend f : p.friends) if (f.username.equalsIgnoreCase(username)) return true;
-        return false;
+        return FriendList.containsUsername(p.friends, username, null);
     }
 
     private void copyFriends() {
@@ -707,10 +798,7 @@ public class MainActivity extends Activity {
                 .setItems(labels, (dialog, which) -> {
                     int count = 0;
                     for (Friend f : others.get(which).friends) {
-                        if (!hasFriend(active, f.username)) {
-                            active.friends.add(new Friend(f.name, f.username));
-                            count++;
-                        }
+                        if (FriendList.copyTo(f, active.friends, Friend::new)) count++;
                     }
                     persist();
                     renderHome();
@@ -718,11 +806,11 @@ public class MainActivity extends Activity {
                 }));
     }
 
-    private void removeFriend(Friend f) {
+    private void removeFriend(Profile owner, Friend f) {
         showDialog(new AlertDialog.Builder(this).setTitle("Supprimer " + f.name + " ?")
                 .setNegativeButton("Annuler", null)
                 .setPositiveButton("Supprimer", (dialog, which) -> {
-                    active.friends.remove(f);
+                    owner.friends.remove(f);
                     persist();
                     renderHome();
                 }));

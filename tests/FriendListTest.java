@@ -29,5 +29,25 @@ public final class FriendListTest {
         check("Original list unchanged", input, zoe, elodie, adam, emile);
         if (FriendList.Order.restore("unknown") != FriendList.Order.OLDEST) throw new AssertionError("Invalid saved sort");
         System.out.println("OK invalid saved sort fallback");
+        List<Item> destination = new ArrayList<>();
+        if (!FriendList.copyTo(zoe, destination, (name, username) -> new Item(name, username, 200)))
+            throw new AssertionError("First copy rejected");
+        Item copy = destination.get(0);
+        if (copy == zoe || !copy.displayName().equals(zoe.displayName())
+                || !copy.snapchatUsername().equals(zoe.snapchatUsername()) || copy.addedAt() != 200)
+            throw new AssertionError("Copy must be independent with a new date");
+        System.out.println("OK independent copy with new date");
+        if (zoe.addedAt() != 0 || input.size() != 4) throw new AssertionError("Source changed");
+        System.out.println("OK copy preserves source");
+        Item duplicate = new Item("Another nickname", "Z_92", 300);
+        if (FriendList.copyTo(duplicate, destination, (name, username) -> new Item(name, username, 300)))
+            throw new AssertionError("Case insensitive duplicate accepted");
+        System.out.println("OK copy rejects duplicate username");
+        if (destination.size() != 1 || destination.get(0) != copy) throw new AssertionError("Destination overwritten");
+        System.out.println("OK duplicate does not overwrite nickname or date");
+        if (FriendList.containsUsername(input, " Z_92 ", zoe)) throw new AssertionError("Unchanged username rejected");
+        System.out.println("OK edit excludes its own entry");
+        if (!FriendList.containsUsername(input, "lolo.PARIS", zoe)) throw new AssertionError("Edit collision missed");
+        System.out.println("OK edit detects another friend's username");
     }
 }

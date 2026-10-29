@@ -57,6 +57,20 @@ final class FriendList {
         return result;
     }
 
+    static <T extends Entry> boolean containsUsername(List<T> friends, String username, T except) {
+        for (T friend : friends) {
+            if (friend != except && friend.snapchatUsername().equalsIgnoreCase(username.trim())) return true;
+        }
+        return false;
+    }
+
+    static <T extends Entry> boolean copyTo(T source, List<T> destination,
+            java.util.function.BiFunction<String, String, T> create) {
+        if (containsUsername(destination, source.snapchatUsername(), null)) return false;
+        destination.add(create.apply(source.displayName(), source.snapchatUsername()));
+        return true;
+    }
+
     private static String normalize(String value) {
         return Normalizer.normalize(value, Normalizer.Form.NFD)
                 .replaceAll("\\p{M}+", "").toLowerCase(Locale.ROOT).trim();
