@@ -188,7 +188,7 @@ public class MainActivity extends Activity {
             @Override public void onReceivedError(WebView view, WebResourceRequest request,
                                                    WebResourceError error) {
                 if (request.isForMainFrame()) {
-                    browserStatus.setText("Chargement impossible. Vérifie Internet ou ouvre le site plus tard.");
+                    setBrowserStatus("Chargement impossible. Vérifie Internet ou ouvre le site plus tard.");
                 }
             }
         });
@@ -573,11 +573,16 @@ public class MainActivity extends Activity {
                 }));
     }
 
+    private void setBrowserStatus(String message) {
+        browserStatus.setText(message);
+        browserStatus.setVisibility(message.isEmpty() ? View.GONE : View.VISIBLE);
+    }
+
     private void prepare(Friend friend) {
         pendingProfile = active;
         pendingFriend = friend;
         browserContext.setText(active.name + " · @" + friend.username);
-        browserStatus.setText("Chargement pour @" + friend.username + "…");
+        setBrowserStatus("");
         drawerLayout.closeDrawer(drawerPanel, false);
         drawerLayout.setDrawerLockMode(DrawerLayout.LOCK_MODE_LOCKED_CLOSED);
         homePanel.setVisibility(View.GONE);
@@ -589,7 +594,7 @@ public class MainActivity extends Activity {
         if (pendingProfile == null || pendingFriend == null) return;
         String currentUrl = browser.getUrl();
         if (!isSupportForm(currentUrl)) {
-            browserStatus.setText("Le formulaire n’est plus affiché. Reviens aux presets pour recommencer.");
+            setBrowserStatus("Le formulaire n’est plus affiché. Reviens aux presets pour recommencer.");
             return;
         }
         applyFormTheme();
@@ -627,11 +632,10 @@ public class MainActivity extends Activity {
                         if (pendingProfile == p && pendingFriend == friend) fillForm(attempt + 1);
                     }, 800);
                 } else {
-                    browserStatus.setText(filled + " champ(s) renseigné(s) pour @" + pendingFriend.username
-                            + ". Vérifie les données, le CAPTCHA et clique sur Envoyer toi-même.");
+                    setBrowserStatus("");
                 }
             } catch (Exception e) {
-                browserStatus.setText("Préremplissage indisponible : remplis le formulaire manuellement.");
+                setBrowserStatus("Préremplissage indisponible : remplis le formulaire manuellement.");
             }
         });
     }
