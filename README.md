@@ -174,6 +174,14 @@ Une fois l'APK créé, tu peux aussi le transférer sur le téléphone et l'ouvr
 - Via ⋮, modifier ou supprimer un profil actif puis inactif : vérifier le profil ciblé, l’actualisation du menu et la conservation de la sélection pour un profil inactif. Annuler une modification et une suppression pour vérifier qu’aucune donnée ne change. Tester aussi la suppression du dernier profil et l’annulation d’une création.
 - Ouvrir « Préparer » puis revenir aux presets : le menu doit redevenir accessible. Il reste verrouillé pendant l’affichage du formulaire pour éviter un changement de profil en cours de préparation.
 
+### Centrage automatique du formulaire
+
+Après le préremplissage, l’application attend brièvement une position stable puis centre instantanément le vrai bouton d’envoi, sans animation de défilement. Les erreurs, champs invalides et vérifications visibles reconnus sont prioritaires. Le centrage s’annule dès que tu manipules la page ; « Re-remplir » permet une nouvelle tentative. Tu peux toujours remonter et vérifier les informations, et l’envoi reste manuel.
+
+La détection dépend du site : si un élément n’est pas reconnu, le défilement manuel reste disponible. Tester sur Waydroid le formulaire complet, les champs manquants, le CAPTCHA et le retour rapide vers un autre ami. Aucun envoi réel n’est nécessaire pour vérifier le centrage.
+
+Tests de logique (DOM simulé, QuickJS `qjs` requis) : `python3 tests/test_form_navigation.py`.
+
 ## 7. Dépannage rapide
 
 | Problème | Piste de résolution |

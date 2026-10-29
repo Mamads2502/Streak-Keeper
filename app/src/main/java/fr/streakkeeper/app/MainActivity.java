@@ -8,6 +8,7 @@ import android.graphics.Paint;
 import android.net.Uri;
 import android.text.TextUtils;
 import android.view.Gravity;
+import android.view.MotionEvent;
 import android.os.Bundle;
 import android.view.View;
 import android.webkit.CookieManager;
@@ -51,6 +52,8 @@ public class MainActivity extends Activity {
 
     private AppTheme ui;
     private TextView browserContext;
+    private boolean formTouched;
+    private int formGeneration;
 
     private final List<Profile> profiles = new ArrayList<>();
     private Profile active;
@@ -152,7 +155,11 @@ public class MainActivity extends Activity {
         LinearLayout actions = horizontal();
         Button back = button("← Retour", this::showHome);
         back.setContentDescription("Retour aux profils et amis");
-        Button refill = primaryButton("Re-remplir", () -> fillForm(0));
+        Button refill = primaryButton("Re-remplir", () -> {
+            cancelFormScroll();
+            formTouched = false;
+            fillForm(0);
+        });
         LinearLayout.LayoutParams backParams = new LinearLayout.LayoutParams(0, -2, 1);
         backParams.setMarginEnd(dp(8));
         actions.addView(back, backParams);
@@ -168,6 +175,10 @@ public class MainActivity extends Activity {
 
         browser = new WebView(this);
         browser.setBackgroundColor(ui.surface);
+        browser.setOnTouchListener((view, event) -> {
+            if (event.getActionMasked() == MotionEvent.ACTION_DOWN) formTouched = true;
+            return false; // Keep normal WebView gestures and clicks.
+        });
         WebSettings webSettings = browser.getSettings();
         webSettings.setJavaScriptEnabled(true); // The real help form needs JavaScript.
         webSettings.setDomStorageEnabled(true);
@@ -178,6 +189,10 @@ public class MainActivity extends Activity {
         CookieManager.getInstance().setAcceptThirdPartyCookies(browser, true);
         browser.setWebChromeClient(new WebChromeClient());
         browser.setWebViewClient(new WebViewClient() {
+            @Override public void onPageStarted(WebView view, String url, android.graphics.Bitmap favicon) {
+                formGeneration++;
+            }
+
             @Override public void onPageFinished(WebView view, String url) {
                 if (isSupportForm(url)) {
                     applyFormTheme();
@@ -229,6 +244,7 @@ public class MainActivity extends Activity {
     }
 
     private void showHome() {
+        cancelFormScroll();
         pendingProfile = null;
         pendingFriend = null;
         renderHome();
@@ -579,6 +595,8 @@ public class MainActivity extends Activity {
     }
 
     private void prepare(Friend friend) {
+        cancelFormScroll();
+        formTouched = false;
         pendingProfile = active;
         pendingFriend = friend;
         browserContext.setText(active.name + " · @" + friend.username);
@@ -600,6 +618,7 @@ public class MainActivity extends Activity {
         applyFormTheme();
         Profile p = pendingProfile;
         Friend friend = pendingFriend;
+        int generation = formGeneration;
         StringBuilder js = new StringBuilder("(function(){")
                 .append("const fields=[")
                 .append(field("request_anonymous_requester_email", p.email)).append(",")
@@ -619,7 +638,7 @@ public class MainActivity extends Activity {
                 .append("el.dispatchEvent(new Event('change',{bubbles:true}));filled++;}")
                 .append("return JSON.stringify({filled:filled,missing:missing});})()");
         browser.evaluateJavascript(js.toString(), response -> {
-            if (pendingProfile != p || pendingFriend != friend) return;
+            if (generation != formGeneration || pendingProfile != p || pendingFriend != friend) return;
             try {
                 String actual = response;
                 if (actual != null && actual.startsWith("\"")) {
@@ -629,15 +648,23 @@ public class MainActivity extends Activity {
                 int filled = outcome.optInt("filled");
                 if (filled < 5 && attempt < 3) {
                     browser.postDelayed(() -> {
-                        if (pendingProfile == p && pendingFriend == friend) fillForm(attempt + 1);
+                        if (generation == formGeneration && pendingProfile == p && pendingFriend == friend) fillForm(attempt + 1);
                     }, 800);
                 } else {
                     setBrowserStatus("");
+                    if (!formTouched && isSupportForm(browser.getUrl())) {
+                        browser.evaluateJavascript(FormNavigation.SCRIPT, null);
+                    }
                 }
             } catch (Exception e) {
                 setBrowserStatus("Préremplissage indisponible : remplis le formulaire manuellement.");
             }
         });
+    }
+
+    private void cancelFormScroll() {
+        formGeneration++;
+        if (browser != null) browser.evaluateJavascript(FormNavigation.CANCEL, null);
     }
 
     private static String field(String id, String value) {

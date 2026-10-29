@@ -1,6 +1,6 @@
 # État du projet — Streak keeper
 
-Dernière mise à jour : 28 octobre 2026.
+Dernière mise à jour : 29 octobre 2026.
 
 ## Objectif
 
@@ -27,6 +27,7 @@ Fonctionnalités présentes dans le code, dont le fonctionnement sur appareil re
 - Copie de tous les amis d’un autre profil, sans doublons de pseudo (comparaison insensible à la casse, également utilisée lors de l’ajout).
 - Sauvegarde locale et restauration du profil actif au démarrage.
 - Bouton « Préparer » pour ouvrir le formulaire avec les données d’un ami ; bouton « Re-remplir », état du préremplissage et retour aux presets.
+- Après le préremplissage, centrage instantané sans animation du bouton d’envoi ou priorité à une erreur, un champ invalide ou une vérification visible reconnue. Attente de position stable (3 mesures), délai borné à 3 secondes, annulation dès interaction et lors du retour/navigation. « Re-remplir » autorise une nouvelle tentative. Le formulaire reste entièrement accessible et l’envoi manuel.
 - Gestion d’une erreur de chargement de la page principale et message de repli lorsque le préremplissage échoue.
 
 ## Décisions techniques actuelles
@@ -46,12 +47,13 @@ Fonctionnalités présentes dans le code, dont le fonctionnement sur appareil re
 
 ## Problèmes connus et limites
 
-- Validation du renommage Java le 28 octobre 2026 : `./gradlew assembleDebug lintDebug --offline` réussit. APK vérifié (intégrité ZIP, signature, classes Java et activité de lancement renommées, identifiant Android historique conservé). La mise à jour sur Waydroid et la migration des données restent à tester.
+- Validation du centrage le 29 octobre 2026 : `./gradlew assembleDebug lintDebug --offline` réussit ; APK debug vérifié (intégrité ZIP et signature). Le centrage réel et les vérifications Snapchat restent à tester sur Waydroid.
 - Contrastes du thème clair déjà calculés : texte principal 15,11:1, texte secondaire sur fond 5,01:1, bouton principal 6,29:1.
 - Le fonctionnement sur appareil et le préremplissage réel du formulaire n’ont pas été testés lors de cette modification.
-- Lint termine sans erreur, avec 17 avertissements : API cible ancienne, activation de JavaScript, règles d’extraction des données, icône absente, chaînes d’interface écrites directement en Java et alignements à gauche explicites (tiroir demandé à gauche).
-- Aucun test automatisé n’est présent dans les sources examinées.
+- Lint termine sans erreur, avec 11 avertissements : API cible ancienne, activation de JavaScript, règles d’extraction des données, icône absente, chaînes d’interface écrites directement en Java et alignements à gauche explicites (tiroir demandé à gauche).
+- `python3 tests/test_form_navigation.py` (QuickJS `qjs` requis) : 11 scénarios de navigation passent sur un DOM simulé. Ils couvrent les priorités, la temporisation bornée, l’annulation et le défilement instantané ; ils ne remplacent pas un test WebView réel.
 - Le préremplissage dépend des identifiants HTML du site et de son chargement dynamique. Le README indique des identifiants observés le 27 octobre 2026 ; leur validité actuelle n’a pas été vérifiée.
+- Le centrage reconnaît les contrôles HTML invalides, certains bandeaux de consentement et les cadres reCAPTCHA visibles ; il ne lit pas le contenu des iframes externes. Un obstacle non reconnu peut nécessiter un défilement manuel. Un espace vide en bas est ajouté pour permettre de centrer le bouton sans le déplacer.
 - Le site peut bloquer les WebViews ou modifier son formulaire. La conservation des cookies ne garantit pas l’absence de CAPTCHA.
 - Seules les conversations privées sont visées ; le choix de groupe n’est pas traité.
 - La copie des amis est globale, sans sélection partielle. Aucune récupération automatique des contacts ou photos depuis Snapchat n’est implémentée.
@@ -59,7 +61,7 @@ Fonctionnalités présentes dans le code, dont le fonctionnement sur appareil re
 
 ## Prochaines étapes
 
-1. Tester le thème clair et le menu sur Waydroid selon les listes du README : accueil, guide au clic, dialogues, saisie, gestes, sélection persistante, liste longue, grands caractères, rotation et formulaire officiel. Attendre le retour de l’utilisateur avant de proposer une fusion dans `main`.
+1. Tester le centrage après « Préparer » et « Re-remplir », la priorité aux champs incomplets/CAPTCHA, l’annulation au toucher, le retour rapide et le changement d’ami, sans envoyer de vraie demande. Tester le thème clair et le menu sur Waydroid selon les listes du README : accueil, guide au clic, dialogues, saisie, gestes, sélection persistante, liste longue, grands caractères, rotation et formulaire officiel. Attendre le retour de l’utilisateur avant de proposer une fusion dans `main`.
 2. Tester la mise à jour de l’ancienne APK vers la nouvelle sur Waydroid sans désinstallation : profils, amis et profil actif conservés, puis redémarrage après sauvegarde pour vérifier la migration de clé. Tester sur émulateur ou appareil les opérations sur les profils et amis, la copie sans doublons, la persistance après redémarrage et la navigation. Vérifier aussi la migration des anciens e-mails et descriptions, ainsi que le masquage et la désactivation du préremplissage de la description via la case à cocher.
 3. Vérifier le chargement du formulaire, le préremplissage, le bouton « Re-remplir » et les erreurs réseau, sans envoyer de véritable demande lors du premier test, conformément au README.
 4. Corriger les problèmes constatés et ajouter les vérifications adaptées aux changements ; actualiser le statut de validation dans la documentation.
