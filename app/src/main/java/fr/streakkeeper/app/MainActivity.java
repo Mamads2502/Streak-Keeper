@@ -1395,8 +1395,8 @@ public class MainActivity extends Activity {
 
     private void showSettings() {
         LinearLayout page = vertical();
-        page.setPadding(dp(20), dp(8), dp(20), dp(24));
-        page.setBackgroundColor(ui.background);
+        page.setPadding(dp(20), dp(12), dp(20), dp(24));
+        page.setBackgroundColor(ui.surface);
         LinearLayout navigation = settingsSection(page, "Enchaînement", "Choisis comment passer d’un ami à l’autre.");
         addSetting(navigation, "Formulaire suivant automatique",
                 "Passe au suivant après confirmation de réception.", "automaticAdvance",
@@ -1425,8 +1425,24 @@ public class MainActivity extends Activity {
         ScrollView scroll = new ScrollView(this);
         scroll.setFillViewport(true);
         scroll.addView(page);
-        showDialog(new AlertDialog.Builder(this).setTitle("Paramètres")
-                .setView(scroll).setPositiveButton("Fermer", null));
+        LinearLayout layout = vertical();
+        layout.setBackgroundColor(ui.surface);
+        LinearLayout heading = horizontal();
+        heading.setPadding(dp(24), dp(16), dp(20), dp(8));
+        heading.addView(text("Paramètres", 22, true), new LinearLayout.LayoutParams(0, -2, 1));
+        ImageButton close = friendToolIcon(R.drawable.ic_close, "Fermer les paramètres");
+        close.setBackground(new android.graphics.drawable.RippleDrawable(
+                ColorStateList.valueOf(ui.border), ui.shape(ui.background, Color.TRANSPARENT), null));
+        heading.addView(close, new LinearLayout.LayoutParams(dp(48), dp(48)));
+        layout.addView(heading);
+        layout.addView(scroll, new LinearLayout.LayoutParams(-1, 0, 1));
+        AlertDialog settings = showDialog(new AlertDialog.Builder(this).setView(layout));
+        close.setOnClickListener(view -> settings.dismiss());
+        android.view.Window window = settings.getWindow();
+        if (window != null) {
+            int height = (int) (getResources().getDisplayMetrics().heightPixels * .8f);
+            window.setLayout(window.getAttributes().width, height);
+        }
     }
 
     private LinearLayout settingsSection(LinearLayout page, String title, String description) {
@@ -1462,13 +1478,42 @@ public class MainActivity extends Activity {
         card.addView(section, new LinearLayout.LayoutParams(-1, -2));
         header.setFocusable(true);
         header.setContentDescription(title + ", déplié. Appuyer pour replier.");
+        final boolean[] expanded = {true};
+        final android.animation.ValueAnimator[] animation = {null};
         header.setOnClickListener(view -> {
-            boolean expanded = section.getVisibility() != View.VISIBLE;
-            section.setVisibility(expanded ? View.VISIBLE : View.GONE);
-            chevron.setText(expanded ? "⌃" : "⌄");
-            header.setContentDescription(title + (expanded ? ", déplié. Appuyer pour replier."
+            expanded[0] = !expanded[0];
+            if (animation[0] != null) animation[0].cancel();
+            int start = section.getVisibility() == View.VISIBLE ? section.getHeight() : 0;
+            section.setVisibility(View.VISIBLE);
+            section.measure(View.MeasureSpec.makeMeasureSpec(card.getWidth(), View.MeasureSpec.EXACTLY),
+                    View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED));
+            int end = expanded[0] ? section.getMeasuredHeight() : 0;
+            chevron.setText(expanded[0] ? "⌃" : "⌄");
+            header.setContentDescription(title + (expanded[0] ? ", déplié. Appuyer pour replier."
                     : ", replié. Appuyer pour déplier."));
             header.sendAccessibilityEvent(android.view.accessibility.AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED);
+            android.animation.ValueAnimator animator = android.animation.ValueAnimator.ofInt(start, end);
+            animation[0] = animator;
+            animator.setDuration(220);
+            animator.setInterpolator(new android.view.animation.DecelerateInterpolator());
+            animator.addUpdateListener(value -> {
+                ViewGroup.LayoutParams params = section.getLayoutParams();
+                params.height = (int) value.getAnimatedValue();
+                section.setLayoutParams(params);
+            });
+            animator.addListener(new android.animation.AnimatorListenerAdapter() {
+                private boolean cancelled;
+                @Override public void onAnimationCancel(android.animation.Animator value) { cancelled = true; }
+                @Override public void onAnimationEnd(android.animation.Animator value) {
+                    if (cancelled) return;
+                    ViewGroup.LayoutParams params = section.getLayoutParams();
+                    params.height = ViewGroup.LayoutParams.WRAP_CONTENT;
+                    section.setLayoutParams(params);
+                    if (!expanded[0]) section.setVisibility(View.GONE);
+                    animation[0] = null;
+                }
+            });
+            animator.start();
         });
         return section;
     }
