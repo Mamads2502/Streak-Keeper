@@ -81,6 +81,17 @@ public class MainActivity extends Activity {
     private Button menuButton;
     private WebView browser;
     private TextView browserStatus;
+    private boolean selecting;
+    private final List<Friend> selectedFriends = new ArrayList<>();
+    private final List<Friend> requestQueue = new ArrayList<>();
+    private int requestIndex;
+    private int requestSession;
+    private boolean submissionObserved;
+    private boolean submissionTransitioned;
+    private String submitMarker;
+    private LinearLayout selectionBar;
+    private Button selectionAction;
+    private Button selectionClose;
 
     static final class Friend implements FriendList.Entry {
         String name, username;
@@ -187,6 +198,10 @@ public class MainActivity extends Activity {
         Button back = button("← Retour", this::showHome);
         back.setContentDescription("Retour aux profils et amis");
         Button refill = primaryButton("Re-remplir", () -> {
+            if (submissionObserved) {
+                setBrowserStatus("Le bouton d’envoi a déjà été activé pour cette demande.");
+                return;
+            }
             cancelFormScroll();
             formTouched = false;
             fillForm(0);
@@ -218,7 +233,19 @@ public class MainActivity extends Activity {
         webSettings.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
         CookieManager.getInstance().setAcceptCookie(true);
         CookieManager.getInstance().setAcceptThirdPartyCookies(browser, true);
-        browser.setWebChromeClient(new WebChromeClient());
+        browser.setWebChromeClient(new WebChromeClient() {
+            @Override public boolean onConsoleMessage(android.webkit.ConsoleMessage message) {
+                if (pendingFriend != null && !submissionObserved && submitMarker != null
+                        && submitMarker.equals(message.message())) {
+                    submissionObserved = true;
+                    setBrowserStatus("Envoi en cours : attente de la réponse du site…");
+                    int session = requestSession;
+                    monitorSubmissionResult(session, 0);
+                    return true;
+                }
+                return super.onConsoleMessage(message);
+            }
+        });
         browser.setWebViewClient(new WebViewClient() {
             @Override public void onPageStarted(WebView view, String url, android.graphics.Bitmap favicon) {
                 formGeneration++;
@@ -227,8 +254,17 @@ public class MainActivity extends Activity {
             @Override public void onPageFinished(WebView view, String url) {
                 if (isSupportForm(url)) {
                     applyFormTheme();
-                    if (pendingProfile != null) fillForm(0);
+                    if (pendingProfile != null && !submissionObserved) {
+                        installSubmitObserver();
+                        fillForm(0);
+                    }
                 }
+            }
+
+            @Override public void onReceivedHttpError(WebView view, WebResourceRequest request,
+                                                       android.webkit.WebResourceResponse response) {
+                if (request.isForMainFrame() && pendingFriend != null)
+                    setBrowserStatus("Erreur du site. Vérifie si la demande a été reçue avant de réessayer.");
             }
 
             @Override public void onReceivedError(WebView view, WebResourceRequest request,
@@ -261,12 +297,24 @@ public class MainActivity extends Activity {
         toolbar.addView(menuButton, new LinearLayout.LayoutParams(dp(48), dp(48)));
         TextView title = text("Streak keeper", 22, true);
         toolbar.addView(title, new LinearLayout.LayoutParams(0, -2, 1));
+        selectionClose = button("×", () -> { exitSelection(); renderHome(); });
+        selectionClose.setTextSize(26);
+        selectionClose.setContentDescription("Quitter la sélection");
+        styleDrawerButton(selectionClose, false);
+        toolbar.addView(selectionClose, new LinearLayout.LayoutParams(dp(48), dp(48)));
+        selectionClose.setVisibility(View.GONE);
         homePanel.addView(toolbar);
 
         home = new ScrollView(this);
         home.setFillViewport(true);
         home.setBackgroundColor(ui.background);
         homePanel.addView(home, new LinearLayout.LayoutParams(-1, 0, 1));
+        selectionBar = vertical();
+        selectionBar.setPadding(dp(20), dp(8), dp(20), dp(16));
+        selectionAction = primaryButton("🔥  Préparer (0)", this::startSelectedRequests);
+        selectionBar.addView(selectionAction, new LinearLayout.LayoutParams(-1, -2));
+        homePanel.addView(selectionBar);
+        selectionBar.setVisibility(View.GONE);
         createProfileDrawer();
         renderHome();
         if (state != null && state.getBoolean("profileDrawerOpen")) {
@@ -277,6 +325,9 @@ public class MainActivity extends Activity {
 
     private void showHome() {
         cancelFormScroll();
+        requestSession++;
+        requestQueue.clear();
+        exitSelection();
         pendingProfile = null;
         pendingFriend = null;
         renderHome();
@@ -319,6 +370,15 @@ public class MainActivity extends Activity {
             count.setBackground(ui.shape(ui.accentSoft, Color.TRANSPARENT));
             count.setPadding(dp(12), dp(6), dp(12), dp(6));
             heading.addView(count);
+            Button select = button("Sélectionner", () -> {
+                selecting = true;
+                selectedFriends.clear();
+                updateSelectionUi();
+                renderFriendResults();
+            });
+            ui.button(select, AppTheme.ButtonStyle.QUIET);
+            select.setVisibility(selecting || active.friends.isEmpty() ? View.GONE : View.VISIBLE);
+            heading.addView(select);
             page.addView(heading);
             gap(page, 12);
             LinearLayout actions = horizontal();
@@ -482,6 +542,19 @@ public class MainActivity extends Activity {
             labels.setPadding(0, 0, dp(8), 0);
             row.addView(labels, new LinearLayout.LayoutParams(0, -2, 1));
 
+            if (selecting) {
+                CheckBox check = new CheckBox(this);
+                check.setButtonTintList(android.content.res.ColorStateList.valueOf(ui.accent));
+                check.setContentDescription("Sélectionner " + friend.name + ", @" + friend.username);
+                check.setChecked(selectedFriends.contains(friend));
+                check.setOnCheckedChangeListener((v, checked) -> {
+                    if (checked && !selectedFriends.contains(friend)) selectedFriends.add(friend);
+                    else if (!checked) selectedFriends.remove(friend);
+                    updateSelectionUi();
+                });
+                row.addView(check, new LinearLayout.LayoutParams(dp(48), dp(48)));
+                row.setOnClickListener(v -> check.setChecked(!check.isChecked()));
+            } else {
             ImageButton prepare = friendToolIcon(R.drawable.ic_flame,
                     "Préparer la demande pour " + friend.name + ", @" + friend.username);
             android.graphics.drawable.GradientDrawable circle = new android.graphics.drawable.GradientDrawable();
@@ -498,6 +571,7 @@ public class MainActivity extends Activity {
             LinearLayout.LayoutParams options = new LinearLayout.LayoutParams(dp(48), dp(48));
             options.setMarginStart(dp(4));
             row.addView(more, options);
+            }
             LinearLayout.LayoutParams layout = new LinearLayout.LayoutParams(-1, -2);
             layout.bottomMargin = dp(8);
             friendResults.addView(row, layout);
@@ -955,19 +1029,110 @@ public class MainActivity extends Activity {
         browserStatus.setVisibility(message.isEmpty() ? View.GONE : View.VISIBLE);
     }
 
+    private void updateSelectionUi() {
+        drawerLayout.setDrawerLockMode(selecting ? DrawerLayout.LOCK_MODE_LOCKED_CLOSED : DrawerLayout.LOCK_MODE_UNLOCKED);
+        selectionClose.setVisibility(selecting ? View.VISIBLE : View.GONE);
+        menuButton.setVisibility(selecting ? View.GONE : View.VISIBLE);
+        selectionBar.setVisibility(selecting ? View.VISIBLE : View.GONE);
+        selectionAction.setText("🔥  Préparer (" + selectedFriends.size() + ")");
+        selectionAction.setEnabled(!selectedFriends.isEmpty());
+        selectionAction.setAlpha(selectedFriends.isEmpty() ? .5f : 1f);
+    }
+
+    private void exitSelection() {
+        selecting = false;
+        selectedFriends.clear();
+        if (selectionBar != null) updateSelectionUi();
+    }
+
+    private void startSelectedRequests() {
+        if (selectedFriends.isEmpty()) return;
+        requestQueue.clear();
+        requestQueue.addAll(selectedFriends);
+        requestIndex = 0;
+        prepareCurrent(requestQueue.get(0));
+    }
+
     private void prepare(Friend friend) {
+        requestQueue.clear();
+        requestQueue.add(friend);
+        requestIndex = 0;
+        prepareCurrent(friend);
+    }
+
+    private void prepareCurrent(Friend friend) {
+        requestSession++;
+        submissionObserved = false;
+        submissionTransitioned = false;
+        submitMarker = "streak-submit-" + UUID.randomUUID();
         ((InputMethodManager) getSystemService(INPUT_METHOD_SERVICE))
                 .hideSoftInputFromWindow(home.getWindowToken(), 0);
         cancelFormScroll();
         formTouched = false;
         pendingProfile = active;
         pendingFriend = friend;
-        browserContext.setText(active.name + " · @" + friend.username);
+        browserContext.setText(active.name + " · @" + friend.username + " · " + (requestIndex + 1) + "/" + requestQueue.size());
         setBrowserStatus("");
         drawerLayout.closeDrawer(drawerPanel, false);
         drawerLayout.setDrawerLockMode(DrawerLayout.LOCK_MODE_LOCKED_CLOSED);
         homePanel.setVisibility(View.GONE);
         browser.loadUrl(FORM_URL); // Fresh request; no programmatic submission.
+    }
+
+    private void installSubmitObserver() {
+        String marker = JSONObject.quote(submitMarker);
+        browser.evaluateJavascript("(function(){if(window.__streakSubmitObserver)return;"
+                + "window.__streakSubmitObserver=true;let sent=false;"
+                + "document.addEventListener('click',function(e){"
+                + "if(sent || !e.isTrusted || !document.getElementById('request_custom_fields_24369736'))return;"
+                + "let target=e.target instanceof Element ? e.target.closest('button, input[type=submit]') : null;"
+                + "if(!target || !target.form || target.disabled)return;"
+                + "if(target.tagName==='BUTTON' && target.type!=='submit')return;"
+                + "sent=true;console.log(" + marker + ");},true);})()", null);
+    }
+
+    private void monitorSubmissionResult(int session, int attempt) {
+        if (session != requestSession || pendingFriend == null || submissionTransitioned) return;
+        if (attempt >= 60) {
+            setBrowserStatus("Réponse du site non détectée. Vérifie la page et ton e-mail avant de réessayer ; la série est arrêtée.");
+            return;
+        }
+        Uri uri = Uri.parse(browser.getUrl() == null ? "" : browser.getUrl());
+        boolean official = "https".equals(uri.getScheme()) && "help.snapchat.com".equals(uri.getHost());
+        if (official) {
+            int generation = formGeneration;
+            browser.evaluateJavascript("(function(){if(!document.body)return false;"
+                    + "let t=(document.body.innerText||'').toLowerCase().normalize('NFD')"
+                    + ".replace(/[\\u0300-\\u036f]/g,'').replace(/\\s+/g,' ');"
+                    + "return /nous avons (?:bien )?(?:pris en compte|recu).{0,100}(?:demande|requete)/.test(t)"
+                    + "|| /(?:votre|ta) (?:demande|requete).{0,100}(?:bien )?(?:prise en compte|recue)/.test(t);})()", result -> {
+                if (session != requestSession || pendingFriend == null || submissionTransitioned) return;
+                if (generation == formGeneration && "true".equals(result)) {
+                    submissionTransitioned = true;
+                    if (requestIndex + 1 < requestQueue.size()) {
+                        requestIndex++;
+                        prepareCurrent(requestQueue.get(requestIndex));
+                    } else {
+                        setBrowserStatus("Réponse du site détectée.");
+                        LinearLayout finishActions = horizontal();
+                        finishActions.setPadding(dp(20), dp(8), dp(20), dp(16));
+                        TextView thanks = mutedText("merci Mamads <3", 10);
+                        finishActions.addView(thanks, new LinearLayout.LayoutParams(0, -2, 1));
+                        Button homeButton = primaryButton("Retour à l’accueil", () -> {});
+                        finishActions.addView(homeButton);
+                        AlertDialog finished = showDialog(new AlertDialog.Builder(this)
+                                .setTitle("🔥 Les flammes sont entre de bonnes mains !")
+                                .setMessage("Les demandes ont été envoyées. Retourne à l’accueil pour retrouver tes amis.")
+                                .setView(finishActions));
+                        homeButton.setOnClickListener(view -> { finished.dismiss(); showHome(); });
+                    }
+                } else {
+                    browser.postDelayed(() -> monitorSubmissionResult(session, attempt + 1), 500);
+                }
+            });
+        } else {
+            browser.postDelayed(() -> monitorSubmissionResult(session, attempt + 1), 500);
+        }
     }
 
     /** Fill only known first-party page fields; never trigger the form submit button. */
@@ -1154,6 +1319,7 @@ public class MainActivity extends Activity {
     @Override public void onBackPressed() {
         if (drawerLayout.isDrawerVisible(drawerPanel)) drawerLayout.closeDrawer(drawerPanel);
         else if (homePanel.getVisibility() == View.GONE) showHome();
+        else if (selecting) { exitSelection(); renderHome(); }
         else if (searchOpen && searchToggle != null) searchToggle.performClick();
         else super.onBackPressed();
     }
