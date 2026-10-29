@@ -57,6 +57,17 @@ public class MainActivity extends Activity {
     // getPreferences() used this file before the Java package was renamed.
     private static final String PREFERENCES_FILE = "MainActivity";
 
+    private static final String ACCENT_KEY = "accentColor";
+    private static final String[] ACCENT_NAMES = {"Indigo", "Bleu", "Sarcelle", "Vert", "Framboise", "Prune", "Océan", "Ambre", "Rouge", "Ardoise"};
+    private static final String[] ACCENT_IDS = {"indigo", "blue", "teal", "green", "rose", "plum", "ocean", "amber", "red", "slate"};
+    private static final int[] ACCENT_COLORS = {R.color.sk_accent, R.color.sk_accent_blue, R.color.sk_accent_teal,
+            R.color.sk_accent_green, R.color.sk_accent_rose, R.color.sk_accent_plum, R.color.sk_accent_ocean,
+            R.color.sk_accent_amber, R.color.sk_accent_red, R.color.sk_accent_slate};
+    private static final int[] ACCENT_THEMES = {R.style.Theme_StreakKeeper, R.style.Theme_StreakKeeper_Blue,
+            R.style.Theme_StreakKeeper_Teal, R.style.Theme_StreakKeeper_Green,
+            R.style.Theme_StreakKeeper_Rose, R.style.Theme_StreakKeeper_Plum, R.style.Theme_StreakKeeper_Ocean,
+            R.style.Theme_StreakKeeper_Amber, R.style.Theme_StreakKeeper_Red, R.style.Theme_StreakKeeper_Slate};
+    private boolean reopenSettings;
     private AppTheme ui;
     private TextView browserContext;
     private boolean formTouched;
@@ -171,6 +182,8 @@ public class MainActivity extends Activity {
     }
 
     @Override public void onCreate(Bundle state) {
+        String accent = getSharedPreferences(PREFERENCES_FILE, MODE_PRIVATE).getString(ACCENT_KEY, "indigo");
+        setTheme(ACCENT_THEMES[accentIndex(accent)]);
         super.onCreate(state);
         ui = new AppTheme(this);
         if (android.os.Build.VERSION.SDK_INT >= 27) {
@@ -358,6 +371,9 @@ public class MainActivity extends Activity {
             drawerLayout.post(() -> drawerLayout.openDrawer(drawerPanel, false));
         }
         browser.loadUrl(FORM_URL); // Load beneath the presets, but never send a request.
+        if (state != null && state.getBoolean("reopenSettings")) {
+            homePanel.post(this::showSettings);
+        }
     }
 
     private void showHome() {
@@ -860,6 +876,7 @@ public class MainActivity extends Activity {
     }
 
     @Override protected void onSaveInstanceState(Bundle state) {
+        state.putBoolean("reopenSettings", reopenSettings);
         state.putString("friendQuery", friendQuery);
         state.putBoolean("friendSearchOpen", searchOpen);
         state.putString("searchProfileId", searchProfileId);
@@ -1397,6 +1414,9 @@ public class MainActivity extends Activity {
         LinearLayout page = vertical();
         page.setPadding(dp(20), dp(12), dp(20), dp(24));
         page.setBackgroundColor(ui.surface);
+        LinearLayout appearance = settingsSection(page, "Apparence", "Choisis la couleur d’accentuation.");
+        addAccentPalette(appearance);
+        gap(page, 20);
         LinearLayout navigation = settingsSection(page, "Enchaînement", "Choisis comment passer d’un ami à l’autre.");
         addSetting(navigation, "Formulaire suivant automatique",
                 "Passe au suivant après confirmation de réception.", "automaticAdvance",
@@ -1443,6 +1463,103 @@ public class MainActivity extends Activity {
             int height = (int) (getResources().getDisplayMetrics().heightPixels * .8f);
             window.setLayout(window.getAttributes().width, height);
         }
+    }
+
+    private static int accentIndex(String id) {
+        for (int i = 0; i < ACCENT_IDS.length; i++) if (ACCENT_IDS[i].equals(id)) return i;
+        return 0;
+    }
+
+    private void changeAccent(String value) {
+        getSharedPreferences(PREFERENCES_FILE, MODE_PRIVATE).edit().putString(ACCENT_KEY, value).apply();
+        reopenSettings = true;
+        recreate();
+    }
+
+    private void addAccentPalette(LinearLayout section) {
+        LinearLayout content = vertical();
+        content.setPadding(dp(16), dp(4), dp(16), dp(16));
+        content.addView(mutedText("Fais défiler les couleurs pour choisir ton accent.", 13));
+        gap(content, 8);
+        android.widget.HorizontalScrollView scroll = new android.widget.HorizontalScrollView(this);
+        scroll.setHorizontalScrollBarEnabled(false);
+        LinearLayout palette = horizontal();
+        String current = getSharedPreferences(PREFERENCES_FILE, MODE_PRIVATE).getString(ACCENT_KEY, "indigo");
+        for (int i = 0; i < ACCENT_IDS.length; i++) {
+            final int index = i;
+            boolean selected = ACCENT_IDS[i].equals(current);
+            Button option = accentOrb(getColor(ACCENT_COLORS[i]), selected, ACCENT_NAMES[i]);
+            option.setOnClickListener(view -> { if (!selected) changeAccent(ACCENT_IDS[index]); });
+            palette.addView(option, new LinearLayout.LayoutParams(dp(48), dp(48)));
+        }
+        boolean custom = current != null && current.matches("#[0-9a-fA-F]{6}");
+        if (custom) {
+            Button option = accentOrb(ui.accent, true, "Couleur personnalisée");
+            option.setOnClickListener(view -> showCustomAccent());
+            palette.addView(option, new LinearLayout.LayoutParams(dp(48), dp(48)));
+        }
+        Button add = button("+", this::showCustomAccent);
+        ui.button(add, AppTheme.ButtonStyle.QUIET);
+        add.setTextSize(24);
+        add.setTextColor(ui.text);
+        add.setPadding(0, 0, 0, 0);
+        android.graphics.drawable.GradientDrawable outline = new android.graphics.drawable.GradientDrawable();
+        outline.setShape(android.graphics.drawable.GradientDrawable.OVAL);
+        outline.setColor(ui.surface);
+        outline.setStroke(dp(1), ui.border);
+        add.setBackground(new android.graphics.drawable.InsetDrawable(outline, dp(6)));
+        add.setContentDescription("Choisir une couleur personnalisée");
+        palette.addView(add, new LinearLayout.LayoutParams(dp(48), dp(48)));
+        scroll.addView(palette);
+        int selectedIndex = custom ? ACCENT_IDS.length : accentIndex(current);
+        scroll.post(() -> scroll.smoothScrollTo(Math.max(0, selectedIndex * dp(48) - scroll.getWidth() / 2 + dp(24)), 0));
+        content.addView(scroll);
+        section.addView(content);
+    }
+
+    private Button accentOrb(int color, boolean selected, String name) {
+        Button option = button(selected ? "✓" : "", () -> {});
+        android.graphics.drawable.GradientDrawable orb = new android.graphics.drawable.GradientDrawable();
+        orb.setShape(android.graphics.drawable.GradientDrawable.OVAL);
+        orb.setColor(color);
+        option.setBackground(new android.graphics.drawable.InsetDrawable(orb, dp(6)));
+        option.setTextColor(Color.WHITE);
+        option.setTextSize(18);
+        option.setPadding(0, 0, 0, 0);
+        option.setSelected(selected);
+        option.setContentDescription(name + (selected ? ", couleur sélectionnée" : ""));
+        return option;
+    }
+
+    private void showCustomAccent() {
+        LinearLayout content = vertical();
+        content.setPadding(dp(20), dp(8), dp(20), dp(8));
+        content.addView(mutedText("Saisis une couleur hexadécimale, par exemple #4F46E5. Choisis une couleur suffisamment foncée pour rester lisible sur fond clair.", 14));
+        EditText input = new EditText(this);
+        input.setSingleLine(true);
+        input.setHint("#4F46E5");
+        input.setInputType(android.text.InputType.TYPE_CLASS_TEXT | android.text.InputType.TYPE_TEXT_FLAG_CAP_CHARACTERS);
+        ui.input(input);
+        String current = getSharedPreferences(PREFERENCES_FILE, MODE_PRIVATE).getString(ACCENT_KEY, "indigo");
+        if (current != null && current.matches("#[0-9a-fA-F]{6}")) input.setText(current);
+        gap(content, 12);
+        content.addView(input);
+        AlertDialog dialog = showDialog(new AlertDialog.Builder(this).setTitle("Couleur personnalisée")
+                .setView(content).setNegativeButton("Annuler", null).setPositiveButton("Appliquer", null));
+        dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(view -> {
+            String value = input.getText().toString().trim();
+            if (!value.matches("#[0-9a-fA-F]{6}")) {
+                input.setError("Utilise le format #RRGGBB.");
+                return;
+            }
+            int color = Color.parseColor(value);
+            if (androidx.core.graphics.ColorUtils.calculateContrast(Color.WHITE, color) < 4.5) {
+                input.setError("Choisis une couleur plus foncée pour assurer la lisibilité.");
+                return;
+            }
+            dialog.dismiss();
+            changeAccent(value.toUpperCase(java.util.Locale.ROOT));
+        });
     }
 
     private LinearLayout settingsSection(LinearLayout page, String title, String description) {

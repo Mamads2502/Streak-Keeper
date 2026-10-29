@@ -29,4 +29,67 @@
     </style>
     <style name="Theme.StreakKeeper" parent="Theme.StreakKeeper.Base" />
     <style name="Theme.StreakKeeper.Dialog" parent="Theme.StreakKeeper.Dialog.Base" />
+    <style name="Theme.StreakKeeper.Blue" parent="Theme.StreakKeeper">
+        <item name="android:colorAccent">@color/sk_accent_blue</item>
+        <item name="android:alertDialogTheme">@style/Theme.StreakKeeper.Dialog.Blue</item>
+    </style>
+    <style name="Theme.StreakKeeper.Dialog.Blue" parent="Theme.StreakKeeper.Dialog">
+        <item name="android:colorAccent">@color/sk_accent_blue</item>
+    </style>
+    <style name="Theme.StreakKeeper.Teal" parent="Theme.StreakKeeper">
+        <item name="android:colorAccent">@color/sk_accent_teal</item>
+        <item name="android:alertDialogTheme">@style/Theme.StreakKeeper.Dialog.Teal</item>
+    </style>
+    <style name="Theme.StreakKeeper.Dialog.Teal" parent="Theme.StreakKeeper.Dialog">
+        <item name="android:colorAccent">@color/sk_accent_teal</item>
+    </style>
+    <style name="Theme.StreakKeeper.Green" parent="Theme.StreakKeeper">
+        <item name="android:colorAccent">@color/sk_accent_green</item>
+        <item name="android:alertDialogTheme">@style/Theme.StreakKeeper.Dialog.Green</item>
+    </style>
+    <style name="Theme.StreakKeeper.Dialog.Green" parent="Theme.StreakKeeper.Dialog">
+        <item name="android:colorAccent">@color/sk_accent_green</item>
+    </style>
+    <style name="Theme.StreakKeeper.Rose" parent="Theme.StreakKeeper">
+        <item name="android:colorAccent">@color/sk_accent_rose</item>
+        <item name="android:alertDialogTheme">@style/Theme.StreakKeeper.Dialog.Rose</item>
+    </style>
+    <style name="Theme.StreakKeeper.Dialog.Rose" parent="Theme.StreakKeeper.Dialog">
+        <item name="android:colorAccent">@color/sk_accent_rose</item>
+    </style>
+    <style name="Theme.StreakKeeper.Plum" parent="Theme.StreakKeeper">
+        <item name="android:colorAccent">@color/sk_accent_plum</item>
+        <item name="android:alertDialogTheme">@style/Theme.StreakKeeper.Dialog.Plum</item>
+    </style>
+    <style name="Theme.StreakKeeper.Dialog.Plum" parent="Theme.StreakKeeper.Dialog">
+        <item name="android:colorAccent">@color/sk_accent_plum</item>
+    </style>
+    <style name="Theme.StreakKeeper.Ocean" parent="Theme.StreakKeeper">
+        <item name="android:colorAccent">@color/sk_accent_ocean</item>
+        <item name="android:alertDialogTheme">@style/Theme.StreakKeeper.Dialog.Ocean</item>
+    </style>
+    <style name="Theme.StreakKeeper.Dialog.Ocean" parent="Theme.StreakKeeper.Dialog">
+        <item name="android:colorAccent">@color/sk_accent_ocean</item>
+    </style>
+    <style name="Theme.StreakKeeper.Amber" parent="Theme.StreakKeeper">
+        <item name="android:colorAccent">@color/sk_accent_amber</item>
+        <item name="android:alertDialogTheme">@style/Theme.StreakKeeper.Dialog.Amber</item>
+    </style>
+    <style name="Theme.StreakKeeper.Dialog.Amber" parent="Theme.StreakKeeper.Dialog">
+        <item name="android:colorAccent">@color/sk_accent_amber</item>
+    </style>
+    <style name="Theme.StreakKeeper.Red" parent="Theme.StreakKeeper">
+        <item name="android:colorAccent">@color/sk_accent_red</item>
+        <item name="android:alertDialogTheme">@style/Theme.StreakKeeper.Dialog.Red</item>
+    </style>
+    <style name="Theme.StreakKeeper.Dialog.Red" parent="Theme.StreakKeeper.Dialog">
+        <item name="android:colorAccent">@color/sk_accent_red</item>
+    </style>
+    <style name="Theme.StreakKeeper.Slate" parent="Theme.StreakKeeper">
+        <item name="android:colorAccent">@color/sk_accent_slate</item>
+        <item name="android:alertDialogTheme">@style/Theme.StreakKeeper.Dialog.Slate</item>
+    </style>
+    <style name="Theme.StreakKeeper.Dialog.Slate" parent="Theme.StreakKeeper.Dialog">
+        <item name="android:colorAccent">@color/sk_accent_slate</item>
+    </style>
 </resources>

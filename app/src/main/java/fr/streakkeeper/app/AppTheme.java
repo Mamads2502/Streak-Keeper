@@ -31,7 +31,13 @@ final class AppTheme {
         text = color(context, R.attr.skText);
         muted = color(context, R.attr.skMuted);
         border = color(context, R.attr.skBorder);
-        accent = color(context, android.R.attr.colorAccent);
+        String savedAccent = context.getSharedPreferences("MainActivity", Context.MODE_PRIVATE)
+                .getString("accentColor", "indigo");
+        int resolvedAccent = color(context, android.R.attr.colorAccent);
+        if (savedAccent != null && savedAccent.matches("#[0-9a-fA-F]{6}")) {
+            resolvedAccent = Color.parseColor(savedAccent);
+        }
+        accent = resolvedAccent;
         accentSoft = blend(surface, accent, .09f);
         // Pick the higher-contrast foreground even if a future accent is very light.
         onAccent = luminance(accent) > .179 ? Color.BLACK : Color.WHITE;
@@ -112,7 +118,7 @@ final class AppTheme {
                 + "min-height:48px;box-sizing:border-box;max-width:100%;}"
                 + "#new_request :is(input,textarea,select):focus-visible{outline:2px solid var(--sk-accent);outline-offset:2px;}"
                 + "#new_request input[type=submit],#new_request button[type=submit]{"
-                + "background:var(--sk-accent)!important;color:var(--sk-on-accent)!important;"
+                + "background:#000000!important;color:#FFFFFF!important;"
                 + "border:0!important;border-radius:14px!important;min-height:48px;padding:12px 20px;}"
                 + "#new_request a{color:var(--sk-text);text-decoration:underline;}";
     }

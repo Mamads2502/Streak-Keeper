@@ -7,4 +7,13 @@
     <color name="sk_text">#202635</color>
     <color name="sk_muted">#626B7C</color>
     <color name="sk_border">#DEE2EA</color>
+    <color name="sk_accent_blue">#1D4ED8</color>
+    <color name="sk_accent_teal">#0F766E</color>
+    <color name="sk_accent_green">#39703C</color>
+    <color name="sk_accent_rose">#AD275D</color>
+    <color name="sk_accent_plum">#7E3A9B</color>
+    <color name="sk_accent_ocean">#075985</color>
+    <color name="sk_accent_amber">#92400E</color>
+    <color name="sk_accent_red">#B42318</color>
+    <color name="sk_accent_slate">#475569</color>
 </resources>

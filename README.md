@@ -20,7 +20,7 @@ Les anciens profils reprennent leur e-mail de contact (ou celui du compte si le 
 
 ## Identité visuelle
 
-Le thème par défaut est clair : fond gris très léger, cartes blanches, typographie sans-serif et accent indigo. Accueil, menu latéral, dialogues, champs et écran d’assistance partagent les mêmes composants. Le lien grisé et souligné « Comment ça marche ? » ouvre un guide sur les profils, les demandes individuelles et groupées, les paramètres et le CAPTCHA.
+Le thème par défaut est clair : fond gris très léger, cartes blanches, typographie sans-serif et accent indigo par défaut, personnalisable dans les paramètres. Accueil, menu latéral, dialogues, champs et écran d’assistance partagent les mêmes composants. Le lien grisé et souligné « Comment ça marche ? » ouvre un guide sur les profils, les demandes individuelles et groupées, les paramètres et le CAPTCHA.
 
 Pour changer l’accent, modifier uniquement `sk_accent` dans `app/src/main/res/values/colors.xml`, puis recompiler. Les teintes secondaires, boutons, contrôles Android et styles du formulaire en découlent ; le texte des boutons pleins choisit automatiquement le noir ou le blanc selon le contraste.
 
