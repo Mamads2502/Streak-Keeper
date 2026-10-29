@@ -114,6 +114,7 @@ public class MainActivity extends Activity {
     private Button procedureBack, procedureNext;
     private boolean automaticAdvance, procedureFinished, automaticFill, automaticCenter;
     private WebView browser;
+    private View themeCover;
     private TextView browserStatus;
     private boolean selecting;
     private final List<Friend> selectedFriends = new ArrayList<>();
@@ -308,36 +309,43 @@ public class MainActivity extends Activity {
                 formGeneration++;
                 if (ui.dark) {
                     // Keep the unstyled first frame from flashing white before the theme CSS is ready.
-                    view.setVisibility(isSupportForm(url) ? View.INVISIBLE : View.VISIBLE);
+                    themeCover.setVisibility(isSupportForm(url) || (pendingFriend != null && isSupportPage(url))
+                            ? View.VISIBLE : View.GONE);
                 }
             }
 
             @Override public void onPageFinished(WebView view, String url) {
                 if (isSupportForm(url)) {
                     int generation = formGeneration;
-                    if (ui.dark) view.setVisibility(View.INVISIBLE);
+                    if (ui.dark) themeCover.setVisibility(View.VISIBLE);
                     applyFormTheme(() -> {
                         if (generation != formGeneration) return;
                         if (!isSupportForm(view.getUrl())) {
-                            if (ui.dark) view.setVisibility(View.VISIBLE);
+                            if (ui.dark) themeCover.setVisibility(View.GONE);
                             return;
                         }
-                        if (ui.dark) view.setVisibility(View.VISIBLE);
+                        if (ui.dark) revealThemedPage(view, generation);
                         if (pendingProfile != null && !submissionObserved) {
                             installSubmitObserver();
                             if (automaticFill) fillForm(0);
                             else finishFormPreparation();
                         }
                     });
-                } else if (pendingFriend != null && formInteractionLocked) {
-                    cancelFormScroll();
+                } else {
+                    if (pendingFriend != null && formInteractionLocked) cancelFormScroll();
+                    if (ui.dark && pendingFriend != null && isSupportPage(url)) {
+                        int generation = formGeneration;
+                        applySupportTheme(() -> {
+                            if (generation == formGeneration) revealThemedPage(view, generation);
+                        });
+                    }
                 }
             }
 
             @Override public void onReceivedHttpError(WebView view, WebResourceRequest request,
                                                        android.webkit.WebResourceResponse response) {
                 if (request.isForMainFrame() && pendingFriend != null) {
-                    if (ui.dark) view.setVisibility(View.VISIBLE);
+                    if (ui.dark) themeCover.setVisibility(View.GONE);
                     cancelFormScroll();
                     setBrowserStatus("Erreur du site. Vérifie si la demande a été reçue avant de réessayer.");
                 }
@@ -346,7 +354,7 @@ public class MainActivity extends Activity {
             @Override public void onReceivedError(WebView view, WebResourceRequest request,
                                                    WebResourceError error) {
                 if (request.isForMainFrame()) {
-                    if (ui.dark) view.setVisibility(View.VISIBLE);
+                    if (ui.dark) themeCover.setVisibility(View.GONE);
                     cancelFormScroll();
                     setBrowserStatus("Chargement impossible. Vérifie Internet ou ouvre le site plus tard.");
                 }
@@ -356,6 +364,10 @@ public class MainActivity extends Activity {
         formCard.setBackground(ui.raisedSurface());
         formCard.setClipToOutline(true);
         formCard.addView(browser, new FrameLayout.LayoutParams(-1, -1));
+        themeCover = new View(this);
+        themeCover.setBackgroundColor(ui.background);
+        themeCover.setVisibility(View.GONE);
+        formCard.addView(themeCover, new FrameLayout.LayoutParams(-1, -1));
         LinearLayout.LayoutParams formParams = new LinearLayout.LayoutParams(-1, 0, 1);
         formParams.setMargins(dp(12), dp(12), dp(12), dp(12));
         browserPanel.addView(formCard, formParams);
@@ -2297,10 +2309,28 @@ public class MainActivity extends Activity {
                 && "/hc/fr-fr/requests/new".equals(uri.getPath());
     }
 
-    private void applyFormTheme() { applyFormTheme(null); }
+    private void revealThemedPage(WebView view, int generation) {
+        // A JavaScript callback precedes the first frame with the new CSS.
+        // Keep WebView visible behind the cover so Chromium can render that frame.
+        view.postVisualStateCallback(generation, new WebView.VisualStateCallback() {
+            @Override public void onComplete(long requestId) {
+                if (generation == formGeneration) themeCover.setVisibility(View.GONE);
+            }
+        });
+        // Avoid trapping the user if the renderer never sends its callback.
+        view.postDelayed(() -> {
+            if (generation == formGeneration) themeCover.setVisibility(View.GONE);
+        }, 2500);
+    }
 
-    private void applyFormTheme(Runnable onApplied) {
-        if (!isSupportForm(browser.getUrl())) {
+    private static boolean isSupportPage(String url) {
+        if (url == null) return false;
+        Uri uri = Uri.parse(url);
+        return "https".equals(uri.getScheme()) && "help.snapchat.com".equals(uri.getHost());
+    }
+
+    private void applySupportTheme(Runnable onApplied) {
+        if (!isSupportPage(browser.getUrl())) {
             if (onApplied != null) onApplied.run();
             return;
         }
@@ -2308,6 +2338,16 @@ public class MainActivity extends Activity {
                 + "if(!s){s=document.createElement('style');s.id='streak-keeper-theme';document.head.appendChild(s);}"
                 + "s.textContent=" + JSONObject.quote(ui.formCss()) + ";})()",
                 ignored -> { if (onApplied != null) onApplied.run(); });
+    }
+
+    private void applyFormTheme() { applyFormTheme(null); }
+
+    private void applyFormTheme(Runnable onApplied) {
+        if (!isSupportForm(browser.getUrl())) {
+            if (onApplied != null) onApplied.run();
+            return;
+        }
+        applySupportTheme(onApplied);
     }
 
     private TextView mutedText(String value, int size) {

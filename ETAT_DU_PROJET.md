@@ -60,6 +60,8 @@ Fonctionnalités présentes dans le code, dont le fonctionnement sur appareil re
 - JavaScript, stockage DOM et cookies, y compris tiers, activés pour le formulaire. Accès WebView aux fichiers et contenus locaux désactivé, contenu mixte et trafic HTTP en clair interdits.
 - Pas de soumission automatique, de requête directe à l’API Zendesk ni de contournement reCAPTCHA. Chaque formulaire reste visible et son envoi manuel. La série est temporaire et abandonnée à la recréation de l’activité ; elle ne reprend jamais automatiquement après interruption.
 
+- En modes sombre et OLED, le thème du WebView est aussi appliqué aux pages HTTPS de `help.snapchat.com` pendant une demande, notamment la confirmation, sans modifier les iframes externes.
+
 ## Problèmes connus et limites
 
 - Icônes de lancement : vérifier sur Waydroid et lanceur Android le changement des six variantes, le redémarrage, la mise à jour de l’APK et les raccourcis existants ; leur rafraîchissement et leur forme dépendent du lanceur.
@@ -101,6 +103,8 @@ Fonctionnalités présentes dans le code, dont le fonctionnement sur appareil re
 - Seules les conversations privées sont visées ; le choix de groupe n’est pas traité.
 - Aucune récupération automatique des contacts ou photos depuis Snapchat n’est implémentée.
 - La validation des saisies se limite principalement aux champs obligatoires et aux doublons d’amis ; les formats d’e-mail et de téléphone ne sont pas vérifiés.
+
+- Confirmation Snapchat en sombre/OLED : un fond du thème masque le WebView jusqu’au rendu de la page stylée (`postVisualStateCallback`, repli après 2,5 s) pour réduire le flash blanc. `./gradlew assembleDebug lintDebug --offline` réussit. Vérifier sur Waydroid la réception du dernier formulaire, les couleurs, la lisibilité, les redirections et l’absence de flash blanc.
 
 ## Prochaines étapes
 
