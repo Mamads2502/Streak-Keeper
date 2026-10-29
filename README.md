@@ -6,6 +6,7 @@ Application Android **non officielle**, développée en Java natif pour gérer d
 
 - Menu latéral gauche : ouverture via ☰ ou balayage depuis le bord gauche, sélection du profil actif et bouton « Ajouter un profil » fixé en bas. Fermeture par balayage à gauche, toucher extérieur, × ou Retour Android.
 - Chaque profil du menu possède un bouton ⋮ : « Modifier » ou « Supprimer… ». La suppression exige une confirmation ; gérer un autre profil ne change pas le profil actif.
+- Recherche repliable dans la liste des amis : surnom et pseudo Snapchat, sans distinction de casse ou d’accents, avec compteur de résultats et effacement rapide. Tri mémorisé : nom A–Z, plus récents ou plus anciens.
 - Plusieurs presets : pseudo, e-mail unique, téléphone et description facultative activable par une case à cocher.
 - Listes d'amis séparées pour chaque profil.
 - Ajout, suppression, importation de tous les amis d'un autre profil sans doublons.
@@ -181,6 +182,24 @@ Après le préremplissage, l’application attend brièvement une position stabl
 La détection dépend du site : si un élément n’est pas reconnu, le défilement manuel reste disponible. Tester sur Waydroid le formulaire complet, les champs manquants, le CAPTCHA et le retour rapide vers un autre ami. Aucun envoi réel n’est nécessaire pour vérifier le centrage.
 
 Tests de logique (DOM simulé, QuickJS `qjs` requis) : `python3 tests/test_form_navigation.py`.
+
+### Recherche et tri des amis
+
+La loupe à gauche ouvre une saisie entre les icônes ; si la largeur disponible est insuffisante (notamment avec de grands caractères), elle apparaît en dessous. L’entonnoir à droite ouvre le menu de tri. La recherche est dynamique sur les surnoms et les pseudos Snapchat. Les fragments, accents et majuscules sont pris en charge ; `@` est facultatif. Plusieurs mots doivent tous correspondre, éventuellement répartis entre surnom et pseudo. Le tri choisi reste appliqué aux résultats et est mémorisé entre les lancements.
+
+La croix efface le texte ; toucher à nouveau la loupe ou utiliser Retour (après fermeture du clavier) referme la recherche et réaffiche la liste complète. Changer de profil réinitialise la recherche ; revenir du formulaire conserve le filtre.
+
+Les nouveaux amis enregistrent leur date d’ajout au profil, y compris lors d’une copie. Pour les anciens amis sans date, l’ordre de la liste sauvegardée fait référence ; ils précèdent les nouveaux dans « Plus anciens ». Aucune date historique n’est inventée.
+
+À tester sur Waydroid : filtre par surnom/pseudo, accents et majuscules, aucun résultat, effacement, changement de profil, retour du formulaire, rotation, tri après redémarrage et copie d’amis.
+
+Tests Java sans dépendance Android :
+
+```bash
+mkdir -p /tmp/streak-friend-tests
+javac -d /tmp/streak-friend-tests app/src/main/java/fr/streakkeeper/app/FriendList.java tests/FriendListTest.java
+java -cp /tmp/streak-friend-tests fr.streakkeeper.app.FriendListTest
+```
 
 ## 7. Dépannage rapide
 

@@ -7,6 +7,9 @@ import android.content.SharedPreferences;
 import android.graphics.Paint;
 import android.net.Uri;
 import android.text.TextUtils;
+import android.text.Editable;
+import android.text.TextWatcher;
+import android.view.inputmethod.InputMethodManager;
 import android.view.Gravity;
 import android.view.MotionEvent;
 import android.os.Bundle;
@@ -21,6 +24,7 @@ import android.webkit.WebViewClient;
 import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.EditText;
+import android.widget.ImageButton;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.PopupMenu;
@@ -54,6 +58,15 @@ public class MainActivity extends Activity {
     private TextView browserContext;
     private boolean formTouched;
     private int formGeneration;
+    private FriendList.Order friendOrder = FriendList.Order.OLDEST;
+    private String friendQuery = "";
+    private String searchProfileId = "";
+    private boolean searchOpen;
+    private LinearLayout friendResults;
+    private TextView friendCount;
+    private EditText friendSearch;
+    private ImageButton sortButton;
+    private ImageButton searchToggle;
 
     private final List<Profile> profiles = new ArrayList<>();
     private Profile active;
@@ -68,16 +81,26 @@ public class MainActivity extends Activity {
     private WebView browser;
     private TextView browserStatus;
 
-    static final class Friend {
+    static final class Friend implements FriendList.Entry {
         String name, username;
+        final long addedAt;
 
         Friend(String name, String username) {
-            this.name = name;
-            this.username = username;
+            this(name, username, System.currentTimeMillis());
         }
 
+        Friend(String name, String username, long addedAt) {
+            this.name = name;
+            this.username = username;
+            this.addedAt = Math.max(0, addedAt);
+        }
+
+        @Override public String displayName() { return name; }
+        @Override public String snapchatUsername() { return username; }
+        @Override public long addedAt() { return addedAt; }
+
         JSONObject json() throws JSONException {
-            return new JSONObject().put("name", name).put("username", username);
+            return new JSONObject().put("name", name).put("username", username).put("addedAt", addedAt);
         }
     }
 
@@ -118,7 +141,7 @@ public class MainActivity extends Activity {
             if (friends != null) for (int i = 0; i < friends.length(); i++) {
                 JSONObject item = friends.optJSONObject(i);
                 if (item != null) p.friends.add(new Friend(
-                        item.optString("name"), item.optString("username")));
+                        item.optString("name"), item.optString("username"), item.optLong("addedAt", 0)));
             }
             return p;
         }
@@ -133,6 +156,13 @@ public class MainActivity extends Activity {
                     View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR | View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR);
         }
         restoreData();
+        friendOrder = FriendList.Order.restore(getSharedPreferences(PREFERENCES_FILE, MODE_PRIVATE)
+                .getString("friendSort", FriendList.Order.OLDEST.name()));
+        if (state != null) {
+            friendQuery = state.getString("friendQuery", "");
+            searchOpen = state.getBoolean("friendSearchOpen");
+            searchProfileId = state.getString("searchProfileId", "");
+        }
 
         FrameLayout root = new FrameLayout(this);
         root.setBackgroundColor(ui.background);
@@ -253,6 +283,12 @@ public class MainActivity extends Activity {
     }
 
     private void renderHome() {
+        String profileId = active == null ? "" : active.id;
+        if (!profileId.equals(searchProfileId)) {
+            friendQuery = "";
+            searchOpen = false;
+            searchProfileId = profileId;
+        }
         LinearLayout page = vertical();
         page.setPadding(dp(AppTheme.PAGE_PADDING), dp(20), dp(AppTheme.PAGE_PADDING), dp(28));
         renderDrawerProfiles();
@@ -277,6 +313,7 @@ public class MainActivity extends Activity {
             LinearLayout heading = horizontal();
             heading.addView(text("Mes amis", 22, true), new LinearLayout.LayoutParams(0, -2, 1));
             TextView count = text(Integer.toString(active.friends.size()), 14, true);
+            friendCount = count;
             count.setBackground(ui.shape(ui.accentSoft, Color.TRANSPARENT));
             count.setPadding(dp(12), dp(6), dp(12), dp(6));
             heading.addView(count);
@@ -286,14 +323,135 @@ public class MainActivity extends Activity {
             gap(page, 8);
             page.addView(button("Copier depuis un autre profil", this::copyFriends), new LinearLayout.LayoutParams(-1, -2));
             gap(page, 16);
+            addFriendTools(page);
+            friendResults = vertical();
+            page.addView(friendResults);
+            renderFriendResults();
+        }
+        gap(page, 20);
+        Button guide = button("Comment ça marche ?", this::showGuide);
+        ui.button(guide, AppTheme.ButtonStyle.QUIET);
+        guide.setBackgroundColor(Color.TRANSPARENT);
+        guide.setTextColor(ui.muted);
+        guide.setPaintFlags(guide.getPaintFlags() | Paint.UNDERLINE_TEXT_FLAG);
+        page.addView(guide, new LinearLayout.LayoutParams(-1, -2));
+        home.removeAllViews();
+        home.addView(page);
+    }
+
+    private void addFriendTools(LinearLayout page) {
+        ImageButton search = friendToolIcon(R.drawable.ic_search, "Rechercher des amis");
+        searchToggle = search;
+        sortButton = friendToolIcon(R.drawable.ic_filter, "Trier les amis : " + friendOrder.label);
+        sortButton.setOnClickListener(view -> showFriendSort());
+        LinearLayout searchRow = horizontal();
+        friendSearch = new EditText(this);
+        friendSearch.setSingleLine(true);
+        friendSearch.setHint("Surnom ou @pseudo");
+        friendSearch.setContentDescription("Rechercher par surnom ou pseudo Snapchat");
+        friendSearch.setInputType(android.text.InputType.TYPE_CLASS_TEXT
+                | android.text.InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS);
+        friendSearch.setImeOptions(android.view.inputmethod.EditorInfo.IME_ACTION_DONE);
+        ui.input(friendSearch);
+        friendSearch.setText(friendQuery);
+        friendSearch.setSelection(friendQuery.length());
+        searchRow.addView(friendSearch, new LinearLayout.LayoutParams(0, -2, 1));
+        Button clear = button("×", () -> friendSearch.setText(""));
+        ui.button(clear, AppTheme.ButtonStyle.QUIET);
+        clear.setPadding(0, 0, 0, 0);
+        clear.setContentDescription("Effacer la recherche");
+        searchRow.addView(clear, new LinearLayout.LayoutParams(dp(48), dp(48)));
+        clear.setVisibility(friendQuery.isEmpty() ? View.INVISIBLE : View.VISIBLE);
+        page.addView(new FriendToolsLayout(this, search, sortButton, searchRow),
+                new LinearLayout.LayoutParams(-1, -2));
+        searchRow.setVisibility(searchOpen ? View.VISIBLE : View.GONE);
+        search.setSelected(searchOpen);
+        styleFriendTool(search, searchOpen);
+        search.setOnClickListener(view -> {
+            searchOpen = !searchOpen;
+            searchRow.setVisibility(searchOpen ? View.VISIBLE : View.GONE);
+            search.setSelected(searchOpen);
+            styleFriendTool(search, searchOpen);
+            InputMethodManager keyboard = (InputMethodManager) getSystemService(INPUT_METHOD_SERVICE);
+            if (searchOpen) {
+                friendSearch.requestFocus();
+                friendSearch.post(() -> keyboard.showSoftInput(friendSearch, InputMethodManager.SHOW_IMPLICIT));
+            } else {
+                friendSearch.setText("");
+                keyboard.hideSoftInputFromWindow(friendSearch.getWindowToken(), 0);
+                friendSearch.clearFocus();
+            }
+        });
+        friendSearch.addTextChangedListener(new TextWatcher() {
+            @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+            @Override public void onTextChanged(CharSequence s, int start, int before, int count) {
+                friendQuery = s.toString();
+                clear.setVisibility(s.length() == 0 ? View.INVISIBLE : View.VISIBLE);
+                renderFriendResults();
+            }
+            @Override public void afterTextChanged(Editable s) {}
+        });
+        gap(page, 12);
+    }
+
+    private ImageButton friendToolIcon(int drawable, String label) {
+        ImageButton icon = new ImageButton(this);
+        icon.setImageResource(drawable);
+        icon.setContentDescription(label);
+        icon.setTooltipText(label);
+        icon.setPadding(dp(12), dp(12), dp(12), dp(12));
+        styleFriendTool(icon, false);
+        return icon;
+    }
+
+    private void styleFriendTool(ImageButton icon, boolean selected) {
+        icon.setBackground(new android.graphics.drawable.RippleDrawable(
+                android.content.res.ColorStateList.valueOf(ui.accentSoft),
+                ui.shape(selected ? ui.accentSoft : ui.surface, Color.TRANSPARENT), null));
+        icon.setImageTintList(android.content.res.ColorStateList.valueOf(ui.text));
+    }
+
+    private void showFriendSort() {
+        PopupMenu menu = new PopupMenu(this, sortButton);
+        for (FriendList.Order order : FriendList.Order.values()) {
+            android.view.MenuItem item = menu.getMenu().add(0, order.ordinal(), order.ordinal(), order.label);
+            item.setCheckable(true).setChecked(order == friendOrder);
+            item.setOnMenuItemClickListener(selected -> {
+                friendOrder = order;
+                getSharedPreferences(PREFERENCES_FILE, MODE_PRIVATE).edit()
+                        .putString("friendSort", order.name()).apply();
+                sortButton.setTooltipText("Trier les amis : " + order.label);
+                sortButton.setContentDescription("Trier les amis : " + order.label);
+                renderFriendResults();
+                return true;
+            });
+        }
+        menu.getMenu().setGroupCheckable(0, true, true);
+        menu.show();
+    }
+
+    private void renderFriendResults() {
+        if (active == null || friendResults == null) return;
+        friendResults.removeAllViews();
+        java.util.List<Friend> matches = FriendList.select(active.friends, friendQuery, friendOrder);
+        friendCount.setText(matches.size() == active.friends.size() ? Integer.toString(matches.size())
+                : matches.size() + " / " + active.friends.size());
+        friendCount.setContentDescription(matches.size() + " amis affichés sur " + active.friends.size());
+        if (!active.friends.isEmpty() && matches.isEmpty()) {
+            LinearLayout empty = card();
+            empty.addView(text("Aucun ami trouvé", 17, true));
+            empty.addView(mutedText("Essaie une partie du surnom ou du pseudo Snapchat.", 14));
+            empty.addView(button("Effacer la recherche", () -> friendSearch.setText("")));
+            friendResults.addView(empty);
+        }
             if (active.friends.isEmpty()) {
                 LinearLayout empty = card();
                 empty.addView(text("Ta liste commence ici", 17, true));
                 gap(empty, 4);
                 empty.addView(mutedText("Ajoute un ami ou copie ceux d’un autre profil.", 14));
-                page.addView(empty);
+                friendResults.addView(empty);
             }
-            for (Friend friend : new ArrayList<>(active.friends)) {
+            for (Friend friend : matches) {
                 LinearLayout friendCard = card();
                 LinearLayout identity = horizontal();
                 LinearLayout labels = vertical();
@@ -311,18 +469,8 @@ public class MainActivity extends Activity {
                 friendCard.addView(button("Préparer la demande →", () -> prepare(friend)), new LinearLayout.LayoutParams(-1, -2));
                 LinearLayout.LayoutParams row = new LinearLayout.LayoutParams(-1, -2);
                 row.bottomMargin = dp(12);
-                page.addView(friendCard, row);
+                friendResults.addView(friendCard, row);
             }
-        }
-        gap(page, 20);
-        Button guide = button("Comment ça marche ?", this::showGuide);
-        ui.button(guide, AppTheme.ButtonStyle.QUIET);
-        guide.setBackgroundColor(Color.TRANSPARENT);
-        guide.setTextColor(ui.muted);
-        guide.setPaintFlags(guide.getPaintFlags() | Paint.UNDERLINE_TEXT_FLAG);
-        page.addView(guide, new LinearLayout.LayoutParams(-1, -2));
-        home.removeAllViews();
-        home.addView(page);
     }
 
     private void showGuide() {
@@ -458,6 +606,9 @@ public class MainActivity extends Activity {
     }
 
     @Override protected void onSaveInstanceState(Bundle state) {
+        state.putString("friendQuery", friendQuery);
+        state.putBoolean("friendSearchOpen", searchOpen);
+        state.putString("searchProfileId", searchProfileId);
         state.putBoolean("profileDrawerOpen", drawerLayout.isDrawerOpen(drawerPanel));
         super.onSaveInstanceState(state);
     }
@@ -595,6 +746,8 @@ public class MainActivity extends Activity {
     }
 
     private void prepare(Friend friend) {
+        ((InputMethodManager) getSystemService(INPUT_METHOD_SERVICE))
+                .hideSoftInputFromWindow(home.getWindowToken(), 0);
         cancelFormScroll();
         formTouched = false;
         pendingProfile = active;
@@ -791,6 +944,7 @@ public class MainActivity extends Activity {
     @Override public void onBackPressed() {
         if (drawerLayout.isDrawerVisible(drawerPanel)) drawerLayout.closeDrawer(drawerPanel);
         else if (homePanel.getVisibility() == View.GONE) showHome();
+        else if (searchOpen && searchToggle != null) searchToggle.performClick();
         else super.onBackPressed();
     }
 
