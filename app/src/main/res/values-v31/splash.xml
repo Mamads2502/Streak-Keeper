@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Stable names: Android persists these names across process restarts and upgrades. -->
+    <style name="Theme.StreakKeeper.Starting" parent="Theme.StreakKeeper">
+        <item name="android:windowDisablePreview">false</item>
+        <item name="android:windowSplashScreenBackground">@color/sk_background</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/splash_logo</item>
+    </style>
+    <style name="Theme.StreakKeeper.Starting.Dark" parent="Theme.StreakKeeper.DarkBase">
+        <item name="android:windowDisablePreview">false</item>
+        <item name="android:windowSplashScreenBackground">@color/sk_dark_background</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/splash_logo</item>
+    </style>
+    <style name="Theme.StreakKeeper.Starting.Oled" parent="Theme.StreakKeeper.OledBase">
+        <item name="android:windowDisablePreview">false</item>
+        <item name="android:windowSplashScreenBackground">@color/sk_oled_background</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/splash_logo</item>
+    </style>
+</resources>

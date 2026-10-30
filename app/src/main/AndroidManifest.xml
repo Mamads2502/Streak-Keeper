@@ -7,7 +7,7 @@
         android:label="Streak keeper"
         android:icon="@mipmap/ic_launcher_base"
         android:usesCleartextTraffic="false"
-        android:theme="@style/Theme.StreakKeeper">
+        android:theme="@style/Theme.StreakKeeper.Starting">
         <activity
             android:name="fr.streakkeeper.app.MainActivity"
             android:exported="true"

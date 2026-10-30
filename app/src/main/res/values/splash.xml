@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Before Android 12 a manifest theme cannot read the saved app preference.
+         Suppress the starting preview to avoid flashing the wrong theme. -->
+    <style name="Theme.StreakKeeper.Starting" parent="Theme.StreakKeeper">
+        <item name="android:windowDisablePreview">true</item>
+    </style>
+    <style name="Theme.StreakKeeper.Starting.Dark" parent="Theme.StreakKeeper.DarkBase">
+        <item name="android:windowDisablePreview">true</item>
+    </style>
+    <style name="Theme.StreakKeeper.Starting.Oled" parent="Theme.StreakKeeper.OledBase">
+        <item name="android:windowDisablePreview">true</item>
+    </style>
+</resources>

@@ -222,6 +222,7 @@ public class MainActivity extends Activity {
         setTheme("dark".equals(mode) ? DARK_THEMES[index]
                 : "oled".equals(mode) ? OLED_THEMES[index] : ACCENT_THEMES[index]);
         super.onCreate(state);
+        updateSystemSplashTheme(mode);
         ui = new AppTheme(this);
         boolean dark = !"light".equals(mode) && ("dark".equals(mode) || "oled".equals(mode));
         getWindow().setStatusBarColor(ui.surface);
@@ -243,6 +244,15 @@ public class MainActivity extends Activity {
         }
 
         buildInterface(state);
+    }
+
+    /** Android persists this theme for the next system starting window. */
+    private void updateSystemSplashTheme(String mode) {
+        if (android.os.Build.VERSION.SDK_INT < 31) return;
+        int theme = "dark".equals(mode) ? R.style.Theme_StreakKeeper_Starting_Dark
+                : "oled".equals(mode) ? R.style.Theme_StreakKeeper_Starting_Oled
+                : R.style.Theme_StreakKeeper_Starting;
+        getSplashScreen().setSplashScreenTheme(theme);
     }
 
     private void buildInterface(Bundle state) {
@@ -1985,6 +1995,7 @@ public class MainActivity extends Activity {
             choice.setOnClickListener(view -> {
                 if (selected) return;
                 getSharedPreferences(PREFERENCES_FILE, MODE_PRIVATE).edit().putString(THEME_KEY, id).apply();
+                updateSystemSplashTheme(id);
                 applyAppearance();
             });
             choices.addView(choice);
