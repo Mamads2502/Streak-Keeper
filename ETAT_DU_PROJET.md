@@ -56,7 +56,7 @@ Fonctionnalités présentes dans le code, dont le fonctionnement sur appareil re
 - Migration des profils existants : le champ JSON `email` remplace `contactEmail` et `accountEmail`, avec priorité à l’ancien e-mail de contact puis repli sur celui du compte. La même adresse alimente les deux identifiants HTML e-mail déjà ciblés, si présents.
 - Le champ JSON `descriptionEnabled` mémorise l’activation de la description ; pour les anciens profils, une description non vide est activée par défaut. Le texte est conservé quand l’option est décochée, mais n’est pas injecté dans le formulaire.
 - Nom de l’application : `Streak keeper` (libellé Android, accueil et projet Gradle). Les sources sont dans `fr/streakkeeper/app` et le manifeste référence explicitement `fr.streakkeeper.app.MainActivity`. L’identifiant d’installation historique est conservé ; le nom du fichier de préférences est fixé explicitement afin que le changement de package ne perde pas les profils. L’URL du dépôt GitHub reste inchangée.
-- Version déclarée : `0.1.0`, code de version `1`.
+- Version déclarée : `1.0.0`, code de version `2`.
 - Stockage local privé, sans chiffrement supplémentaire des e-mails et téléphones ; sauvegarde Android désactivée dans le manifeste. Aucun mot de passe Snapchat n’est demandé.
 - JavaScript, stockage DOM et cookies, y compris tiers, activés pour le formulaire. Accès WebView aux fichiers et contenus locaux désactivé, contenu mixte et trafic HTTP en clair interdits.
 - Pas de soumission automatique, de requête directe à l’API Zendesk ni de contournement reCAPTCHA. Chaque formulaire reste visible et son envoi manuel. La série est temporaire et abandonnée à la recréation de l’activité ; elle ne reprend jamais automatiquement après interruption.
