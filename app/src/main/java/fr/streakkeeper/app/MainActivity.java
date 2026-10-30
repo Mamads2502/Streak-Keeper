@@ -108,7 +108,7 @@ public class MainActivity extends Activity {
     private DrawerLayout drawerLayout;
     private LinearLayout drawerPanel;
     private LinearLayout drawerProfiles;
-    private Button menuButton;
+    private ImageButton menuButton;
     private ImageButton settingsButton;
     private ImageButton selectionEdit, selectionCopy, selectionFavorite, selectionDelete;
     private TextView toolbarTitle;
@@ -413,31 +413,28 @@ public class MainActivity extends Activity {
         root.addView(homePanel, new FrameLayout.LayoutParams(-1, -1));
         LinearLayout toolbar = horizontal();
         toolbar.setPadding(dp(8), dp(8), dp(16), dp(8));
-        toolbar.setBackground(ui.gradient(ui.surface, ui.accentSoft, Color.TRANSPARENT));
-        menuButton = button("", () -> drawerLayout.openDrawer(drawerPanel));
-        menuButton.setTextSize(24);
-        menuButton.setContentDescription("Ouvrir le menu des profils");
-        styleDrawerButton(menuButton, false);
-        menuButton.setPadding(0, 0, 0, 0);
-        menuButton.setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_menu, 0, 0, 0);
-        menuButton.setCompoundDrawableTintList(ColorStateList.valueOf(ui.text));
+        toolbar.setBackground(ui.toolbarBackdrop());
+        menuButton = friendToolIcon(R.drawable.ic_menu, "Ouvrir le menu des profils");
+        menuButton.setBackground(new android.graphics.drawable.RippleDrawable(
+                ColorStateList.valueOf(ui.accentSoft), null, ui.shape(Color.WHITE, Color.TRANSPARENT)));
+        menuButton.setOnClickListener(view -> drawerLayout.openDrawer(drawerPanel));
         toolbar.addView(menuButton, new LinearLayout.LayoutParams(dp(48), dp(48)));
         toolbarTitle = text("Streak keeper", 22, true);
         toolbarTitle.setSingleLine(true);
         toolbarTitle.setEllipsize(TextUtils.TruncateAt.END);
         toolbar.addView(toolbarTitle, new LinearLayout.LayoutParams(0, -2, 1));
-        selectionEdit = friendToolIcon(R.drawable.ic_edit, "Modifier l’ami sélectionné");
+        selectionEdit = selectionToolIcon(R.drawable.ic_edit, "Modifier l’ami sélectionné");
         selectionEdit.setOnClickListener(view -> {
             if (active != null && selectedFriends.size() == 1) editFriend(active, selectedFriends.get(0));
         });
         toolbar.addView(selectionEdit, new LinearLayout.LayoutParams(dp(48), dp(48)));
-        selectionCopy = friendToolIcon(R.drawable.ic_copy_to, "Copier les amis sélectionnés");
+        selectionCopy = selectionToolIcon(R.drawable.ic_copy_to, "Copier les amis sélectionnés");
         selectionCopy.setOnClickListener(view -> copySelectedFriends());
         toolbar.addView(selectionCopy, new LinearLayout.LayoutParams(dp(48), dp(48)));
-        selectionFavorite = friendToolIcon(R.drawable.ic_favorite, "Ajouter aux favoris");
+        selectionFavorite = selectionToolIcon(R.drawable.ic_favorite, "Ajouter aux favoris");
         selectionFavorite.setOnClickListener(view -> toggleSelectedFavorites());
         toolbar.addView(selectionFavorite, new LinearLayout.LayoutParams(dp(48), dp(48)));
-        selectionDelete = friendToolIcon(R.drawable.ic_delete, "Supprimer les amis sélectionnés");
+        selectionDelete = selectionToolIcon(R.drawable.ic_delete, "Supprimer les amis sélectionnés");
         selectionDelete.setOnClickListener(view -> deleteSelectedFriends());
         toolbar.addView(selectionDelete, new LinearLayout.LayoutParams(dp(48), dp(48)));
         selectionEdit.setVisibility(View.GONE);
@@ -448,11 +445,13 @@ public class MainActivity extends Activity {
         android.graphics.drawable.GradientDrawable settingsCircle = new android.graphics.drawable.GradientDrawable();
         settingsCircle.setShape(android.graphics.drawable.GradientDrawable.OVAL);
         settingsCircle.setColor(ui.surface);
-        settingsButton.setBackground(new android.graphics.drawable.RippleDrawable(
-                android.content.res.ColorStateList.valueOf(ui.accentSoft), settingsCircle, null));
+        settingsButton.setBackground(new android.graphics.drawable.InsetDrawable(
+                new android.graphics.drawable.RippleDrawable(
+                        ColorStateList.valueOf(ui.accentSoft), settingsCircle, null), dp(3)));
+        settingsButton.setPadding(dp(13), dp(13), dp(13), dp(13));
         settingsButton.setOnClickListener(view -> showSettings());
         toolbar.addView(settingsButton, new LinearLayout.LayoutParams(dp(48), dp(48)));
-        selectionClose = friendToolIcon(R.drawable.ic_close, "Quitter la sélection");
+        selectionClose = selectionToolIcon(R.drawable.ic_close, "Quitter la sélection");
         selectionClose.setOnClickListener(view -> { exitSelection(); renderHome(); });
         toolbar.addView(selectionClose, new LinearLayout.LayoutParams(dp(48), dp(48)));
         selectionClose.setVisibility(View.GONE);
@@ -640,6 +639,12 @@ public class MainActivity extends Activity {
         icon.setTooltipText(label);
         icon.setPadding(dp(12), dp(12), dp(12), dp(12));
         styleFriendTool(icon, false);
+        return icon;
+    }
+
+    private ImageButton selectionToolIcon(int drawable, String label) {
+        ImageButton icon = friendToolIcon(drawable, label);
+        icon.setBackground(new android.graphics.drawable.InsetDrawable(icon.getBackground(), dp(2)));
         return icon;
     }
 

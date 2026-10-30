@@ -86,6 +86,14 @@ final class AppTheme {
         return drawable;
     }
 
+    Drawable toolbarBackdrop() {
+        GradientDrawable drawable = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
+                new int[]{surface, accentSoft});
+        float radius = dp(RADIUS);
+        drawable.setCornerRadii(new float[]{0, 0, 0, 0, radius, radius, radius, radius});
+        return drawable;
+    }
+
     Drawable profileBackdrop() { return new ProfileBackdrop(); }
     Drawable raisedSurface() { return new RaisedSurface(); }
 
