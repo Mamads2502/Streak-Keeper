@@ -91,13 +91,11 @@ public class MainActivity extends Activity {
     private FriendList.Order friendOrder = FriendList.Order.OLDEST;
     private String friendQuery = "";
     private String searchProfileId = "";
-    private boolean searchOpen;
     private boolean favoritesOnly;
     private LinearLayout friendResults;
     private TextView friendCount;
     private EditText friendSearch;
     private ImageButton sortButton;
-    private ImageButton searchToggle;
 
     private final List<Profile> profiles = new ArrayList<>();
     private Profile active;
@@ -238,7 +236,6 @@ public class MainActivity extends Activity {
             snapchatImportProfileId = state.getString("snapchatImportProfileId");
             exportProfileId = state.getString("exportProfileId");
             friendQuery = state.getString("friendQuery", "");
-            searchOpen = state.getBoolean("friendSearchOpen");
             favoritesOnly = state.getBoolean("favoritesOnly");
             searchProfileId = state.getString("searchProfileId", "");
         }
@@ -494,7 +491,6 @@ public class MainActivity extends Activity {
         String profileId = active == null ? "" : active.id;
         if (!profileId.equals(searchProfileId)) {
             friendQuery = "";
-            searchOpen = false;
             searchProfileId = profileId;
         }
         LinearLayout page = vertical();
@@ -577,49 +573,36 @@ public class MainActivity extends Activity {
     }
 
     private void addFriendTools(LinearLayout page) {
-        ImageButton search = friendToolIcon(R.drawable.ic_search, "Rechercher des amis");
-        searchToggle = search;
         sortButton = friendToolIcon(R.drawable.ic_filter, "Trier et filtrer les amis");
         styleFriendTool(sortButton, favoritesOnly);
         sortButton.setOnClickListener(view -> showFriendSort());
         LinearLayout searchRow = horizontal();
+        searchRow.setFocusableInTouchMode(true);
+        FrameLayout field = new FrameLayout(this);
         friendSearch = new EditText(this);
         friendSearch.setSingleLine(true);
-        friendSearch.setHint("Surnom ou @pseudo");
+        friendSearch.setHint("Rechercher un ami");
         friendSearch.setContentDescription("Rechercher par surnom ou pseudo Snapchat");
         friendSearch.setInputType(android.text.InputType.TYPE_CLASS_TEXT
                 | android.text.InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS);
         friendSearch.setImeOptions(android.view.inputmethod.EditorInfo.IME_ACTION_DONE);
         ui.input(friendSearch);
+        friendSearch.setPadding(dp(16), dp(12), dp(48), dp(12));
         friendSearch.setText(friendQuery);
         friendSearch.setSelection(friendQuery.length());
-        searchRow.addView(friendSearch, new LinearLayout.LayoutParams(0, -2, 1));
+        field.addView(friendSearch, new FrameLayout.LayoutParams(-1, -2));
         Button clear = button("×", () -> friendSearch.setText(""));
         ui.button(clear, AppTheme.ButtonStyle.QUIET);
+        clear.setBackgroundColor(Color.TRANSPARENT);
         clear.setPadding(0, 0, 0, 0);
         clear.setContentDescription("Effacer la recherche");
-        searchRow.addView(clear, new LinearLayout.LayoutParams(dp(48), dp(48)));
+        field.addView(clear, new FrameLayout.LayoutParams(dp(48), dp(48), Gravity.END | Gravity.CENTER_VERTICAL));
         clear.setVisibility(friendQuery.isEmpty() ? View.INVISIBLE : View.VISIBLE);
-        page.addView(new FriendToolsLayout(this, search, sortButton, searchRow),
-                new LinearLayout.LayoutParams(-1, -2));
-        searchRow.setVisibility(searchOpen ? View.VISIBLE : View.GONE);
-        search.setSelected(searchOpen);
-        styleFriendTool(search, searchOpen);
-        search.setOnClickListener(view -> {
-            searchOpen = !searchOpen;
-            searchRow.setVisibility(searchOpen ? View.VISIBLE : View.GONE);
-            search.setSelected(searchOpen);
-            styleFriendTool(search, searchOpen);
-            InputMethodManager keyboard = (InputMethodManager) getSystemService(INPUT_METHOD_SERVICE);
-            if (searchOpen) {
-                friendSearch.requestFocus();
-                friendSearch.post(() -> keyboard.showSoftInput(friendSearch, InputMethodManager.SHOW_IMPLICIT));
-            } else {
-                friendSearch.setText("");
-                keyboard.hideSoftInputFromWindow(friendSearch.getWindowToken(), 0);
-                friendSearch.clearFocus();
-            }
-        });
+        searchRow.addView(field, new LinearLayout.LayoutParams(0, -2, 1));
+        LinearLayout.LayoutParams filterParams = new LinearLayout.LayoutParams(dp(48), dp(48));
+        filterParams.leftMargin = dp(8);
+        searchRow.addView(sortButton, filterParams);
+        page.addView(searchRow, new LinearLayout.LayoutParams(-1, -2));
         friendSearch.addTextChangedListener(new TextWatcher() {
             @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
             @Override public void onTextChanged(CharSequence s, int start, int before, int count) {
@@ -1092,7 +1075,6 @@ public class MainActivity extends Activity {
         state.putString("exportProfileId", exportProfileId);
         state.putBoolean("reopenSettings", reopenSettings);
         state.putString("friendQuery", friendQuery);
-        state.putBoolean("friendSearchOpen", searchOpen);
         state.putBoolean("favoritesOnly", favoritesOnly);
         state.putString("searchProfileId", searchProfileId);
         state.putBoolean("profileDrawerOpen", drawerLayout.isDrawerOpen(drawerPanel));
@@ -2741,7 +2723,6 @@ public class MainActivity extends Activity {
         if (drawerLayout.isDrawerVisible(drawerPanel)) drawerLayout.closeDrawer(drawerPanel);
         else if (homePanel.getVisibility() == View.GONE) showHome();
         else if (selecting) { exitSelection(); renderHome(); }
-        else if (searchOpen && searchToggle != null) searchToggle.performClick();
         else super.onBackPressed();
     }
 
