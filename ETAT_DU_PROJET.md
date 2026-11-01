@@ -142,3 +142,8 @@ Le README présente l’installation, les fonctions et les commandes de compilat
 
 - L’en-tête de l’accueil commence par la couleur de surface utilisée par la barre d’état Android et conserve un dégradé vertical vers l’accent, avec des arrondis uniquement en bas. Le bouton du menu possède une icône centrée, un fond transparent et un retour visuel au toucher. Cette disposition suit les palettes clair, sombre, OLED et les accents personnalisés sans modifier les dimensions ou les commandes.
 - À vérifier sur téléphone : continuité avec la barre d’état, lisibilité des icônes système, trois thèmes, accents clairs et foncés, changement de thème, menu, sélection, grands caractères et rotation. Le rendu varie selon le système et reste à valider sur appareil.
+
+## Sélection des amis
+
+- Les lignes sélectionnées affichent un fond teinté et une bordure accentuée en plus de la coche, aussi bien dans la liste principale que dans les imports. Les couleurs suivent le thème et les interactions existantes restent inchangées.
+- À vérifier sur appareil : sélection individuelle et par glissement, tout sélectionner, doublons désactivés, recherche, trois thèmes et accents personnalisés.

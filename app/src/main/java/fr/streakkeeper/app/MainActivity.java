@@ -736,7 +736,7 @@ public class MainActivity extends Activity {
         for (Friend friend : matches) {
             LinearLayout row = horizontal();
             row.setTag(friend);
-            row.setBackground(ui.shape(ui.surface, ui.border));
+            row.setBackground(friendSelectionBackground());
             row.setPadding(dp(14), dp(10), dp(8), dp(10));
             LinearLayout labels = vertical();
             TextView name = text(friend.name, 16, true);
@@ -1467,7 +1467,7 @@ public class MainActivity extends Activity {
             if (!duplicate) available.add(friend);
             LinearLayout row = horizontal();
             row.setTag(friend);
-            row.setBackground(ui.shape(ui.surface, ui.border));
+            row.setBackground(friendSelectionBackground());
             row.setPadding(dp(14), dp(10), dp(8), dp(10));
             LinearLayout labels = vertical();
             TextView name = text(friend.name, 16, true);
@@ -1565,6 +1565,13 @@ public class MainActivity extends Activity {
             Toast.makeText(this, count + " ami(s) importé(s).", Toast.LENGTH_SHORT).show();
         });
         update.run();
+    }
+
+    private android.graphics.drawable.Drawable friendSelectionBackground() {
+        android.graphics.drawable.StateListDrawable states = new android.graphics.drawable.StateListDrawable();
+        states.addState(new int[]{android.R.attr.state_selected}, ui.shape(ui.accentSoft, ui.accentText));
+        states.addState(new int[]{}, ui.shape(ui.surface, ui.border));
+        return states;
     }
 
     private TextView selectionIndicator() {
