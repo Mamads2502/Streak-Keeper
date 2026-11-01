@@ -152,3 +152,8 @@ Le README présente l’installation, les fonctions et les commandes de compilat
 
 - Le champ de recherche reste visible à gauche du bouton de tri et filtre, avec une croix pour effacer la saisie. La recherche reste temporaire et suit le profil actif.
 - À vérifier sur appareil : petits écrans, grandes polices, clavier, recherche, effacement, changement de profil et rotation.
+
+## Modification des couleurs personnalisées
+
+- Un double appui sur une couleur personnalisée ouvre son éditeur ; un appui simple la sélectionne et un appui long propose sa suppression. La modification conserve la position dans la palette, évite les doublons et actualise l’accent si la couleur modifiée était active.
+- À vérifier sur appareil : double appui sur couleur active ou inactive, annulation, collision avec une couleur existante, appui long, défilement et lecteur d’écran.

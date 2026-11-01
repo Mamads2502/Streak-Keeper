@@ -2056,7 +2056,7 @@ public class MainActivity extends Activity {
     private void addAccentPalette(LinearLayout section) {
         LinearLayout content = vertical();
         content.setPadding(dp(16), dp(4), dp(16), dp(16));
-        content.addView(mutedText("Fais défiler les couleurs pour choisir ton accent.", 13));
+        content.addView(mutedText("Appui pour choisir, double appui pour modifier une couleur personnalisée, appui long pour la supprimer.", 13));
         gap(content, 8);
         android.widget.HorizontalScrollView scroll = new android.widget.HorizontalScrollView(this);
         scroll.setHorizontalScrollBarEnabled(false);
@@ -2076,9 +2076,25 @@ public class MainActivity extends Activity {
             String value = customColors.get(i);
             boolean selected = value.equalsIgnoreCase(current);
             Button option = accentOrb(Color.parseColor(value), selected, "Couleur personnalisée " + value);
-            option.setTooltipText("Appui long pour supprimer " + value);
-            option.setOnClickListener(view -> { if (!selected) changeAccent(value); });
+            option.setTooltipText("Double appui pour modifier, appui long pour supprimer " + value);
+            final boolean[] pending = {false};
+            Runnable choose = () -> {
+                pending[0] = false;
+                if (!selected) changeAccent(value);
+            };
+            option.setOnClickListener(view -> {
+                if (pending[0]) {
+                    option.removeCallbacks(choose);
+                    pending[0] = false;
+                    showCustomAccent(value);
+                } else {
+                    pending[0] = true;
+                    option.postDelayed(choose, android.view.ViewConfiguration.getDoubleTapTimeout());
+                }
+            });
             option.setOnLongClickListener(view -> {
+                option.removeCallbacks(choose);
+                pending[0] = false;
                 showDialog(new AlertDialog.Builder(this).setTitle("Supprimer cette couleur ?")
                         .setMessage("Cette couleur personnalisée sera retirée de la palette.")
                         .setNegativeButton("Annuler", null)
@@ -2153,11 +2169,16 @@ public class MainActivity extends Activity {
     }
 
     private void showCustomAccent() {
+        showCustomAccent(null);
+    }
+
+    private void showCustomAccent(String original) {
         LinearLayout content = vertical();
         content.setPadding(dp(20), dp(8), dp(20), dp(12));
         content.addView(mutedText("Choisis une couleur sur la roue et ajuste sa luminosité.", 14));
         String current = getSharedPreferences(PREFERENCES_FILE, MODE_PRIVATE).getString(ACCENT_KEY, "indigo");
-        int initial = current != null && current.matches("#[0-9a-fA-F]{6}")
+        int initial = original != null ? Color.parseColor(original)
+                : current != null && current.matches("#[0-9a-fA-F]{6}")
                 ? Color.parseColor(current) : getColor(ACCENT_COLORS[accentIndex(current)]);
         ColorWheel wheel = new ColorWheel(this, initial);
         LinearLayout.LayoutParams wheelParams = new LinearLayout.LayoutParams(-1, dp(220));
@@ -2180,7 +2201,7 @@ public class MainActivity extends Activity {
         content.addView(mutedText("Luminosité", 13)); content.addView(brightness);
         ScrollView scroll = new ScrollView(this);
         scroll.addView(content);
-        AlertDialog dialog = showDialog(new AlertDialog.Builder(this).setTitle("Couleur personnalisée")
+        AlertDialog dialog = showDialog(new AlertDialog.Builder(this).setTitle(original == null ? "Couleur personnalisée" : "Modifier la couleur")
                 .setView(scroll).setNegativeButton("Annuler", null).setPositiveButton("Appliquer", null));
         Button apply = dialog.getButton(AlertDialog.BUTTON_POSITIVE);
         Runnable update = () -> {
@@ -2213,11 +2234,20 @@ public class MainActivity extends Activity {
         apply.setOnClickListener(view -> {
             String value = String.format(java.util.Locale.ROOT, "#%06X", wheel.color() & 0xFFFFFF);
             List<String> colors = customAccents();
-            if (!colors.contains(value)) colors.add(value);
-            getSharedPreferences(PREFERENCES_FILE, MODE_PRIVATE).edit()
-                    .putString("customAccents", new JSONArray(colors).toString()).apply();
+            SharedPreferences prefs = getSharedPreferences(PREFERENCES_FILE, MODE_PRIVATE);
+            boolean wasSelected = original != null && original.equalsIgnoreCase(prefs.getString(ACCENT_KEY, "indigo"));
+            if (original != null) {
+                int index = colors.indexOf(original);
+                if (index >= 0) {
+                    if (colors.contains(value) && !original.equals(value)) colors.remove(index);
+                    else colors.set(index, value);
+                }
+            } else if (!colors.contains(value)) colors.add(value);
+            SharedPreferences.Editor edit = prefs.edit().putString("customAccents", new JSONArray(colors).toString());
+            if (original == null || wasSelected) edit.putString(ACCENT_KEY, value);
+            edit.apply();
             dialog.dismiss();
-            changeAccent(value);
+            applyAppearance();
         });
         update.run();
     }
